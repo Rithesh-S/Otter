@@ -8,14 +8,14 @@
 class DataNode {
 
     private:
-        static const size_t tot_space = 120;
+        static const size_t tot_space = 124;
         uint32_t id;
         char data[tot_space] = {0};
-
+        
     public:
+        DataNode(uint32_t id, char (&d) [124]);
         DataNode() = default;
+        ~DataNode() = default;
 
-        void addData(char (&d)[120]);
-        void getData(char (&d)[120]);
-
+        std::pair<uint32_t, std::string> getData();
 };
