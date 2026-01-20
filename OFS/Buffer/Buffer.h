@@ -6,10 +6,10 @@
 #include <cstdint>
 #include <fstream>
 #include <string>
+#include "../StorageManager/StorageManager.h"
 #include "../DataNode/DataNode.h"
 
-class Buffer
-{
+class Buffer {
 
 private:
     std::map<uint32_t, DataNode> records;

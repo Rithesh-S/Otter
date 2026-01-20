@@ -2,7 +2,10 @@
 output/*
 !output/.gitkeep
 
-
 #chunk file
 OFS/bin/*
 !OFS/bin/.gitkeep
+
+#conf file
+OFS/config/*
+!OFS/config/.gitkeep

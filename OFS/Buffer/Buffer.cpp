@@ -2,28 +2,21 @@
 
 void Buffer::writeData(uint32_t id, DataNode record, size_t size) {
     if(used_bytes + size > max_bytes) return;
-
     records[id] = record;
     used_bytes += size;
-
 }
 
-std::map<uint32_t, DataNode> Buffer::readData() {
-    return records;
-}
+std::map<uint32_t, DataNode> Buffer::readData() { return records; }
 
-bool Buffer::isFull() {
-    return used_bytes == max_bytes;
-}
+bool Buffer::isFull() { return used_bytes == max_bytes; }
 
 void Buffer::flush() {
-    size_t bin_number = 0;
-    std::string filename = "OFS/bin/chunk_file_" + std::to_string(bin_number) + ".bin";
+    StorageManager storageManager;
+    std::string filename = storageManager.getFileNameForBin();
 
     if(saveTheNodesIntoBin(filename, records)) {
         records.clear();
         used_bytes = 0;
-        bin_number++;
     } else return;
 }
 
