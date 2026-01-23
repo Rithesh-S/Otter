@@ -4,7 +4,7 @@ for /F "tokens=1,2 delims=#" %%a in ('"prompt #$H#$E# & echo on & for %%b in (1)
 @echo off
 echo %ESC%[33mCompiling...%ESC%[0m
 
-g++ ./main.cpp ./OFS/DataNode/DataNode.cpp ./OFS/Buffer/Buffer.cpp ./OFS/StorageManager/StorageManager.cpp -o ./output/build -std=c++17 -g
+g++ ./main.cpp ./OFS/DataNode/DataNode.cpp ./OFS/Buffer/Buffer.cpp ./OFS/StorageManager/StorageManager.cpp ./Index/BTree/BTree.cpp -o ./output/build -std=c++17 -g
 
 if %errorlevel% neq 0 (
     echo %ESC%[31mBuild Failed...%ESC%[0m

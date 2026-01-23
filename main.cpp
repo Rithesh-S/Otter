@@ -26,7 +26,7 @@ int main() {
         throw std::runtime_error("\033[31mERROR: File not found!\033[0m");
 
     storageManager.writeRecord(std::move(file), length, buffer);
-    cout << storageManager.readRecord(2, storageManager.getFileNameByIndex(0));
+    cout << storageManager.readRecord(2);
 
     return 0;
 }

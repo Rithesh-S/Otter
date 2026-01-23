@@ -5,6 +5,8 @@ output/*
 #chunk file
 OFS/bin/*
 !OFS/bin/.gitkeep
+Index/bin/*
+!Index/bin/.gitkeep
 
 #conf file
 OFS/config/*

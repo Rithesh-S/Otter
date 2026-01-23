@@ -1,7 +1,7 @@
 #include "StorageManager.h"
 #include "../Buffer/Buffer.h"
 
-size_t StorageManager::index = -1;
+uint32_t StorageManager::index = 0;
 StorageManager::StorageManager() { loadMetaData(); }
 StorageManager::~StorageManager() { saveMetaData(); }
 
@@ -25,20 +25,23 @@ std::string StorageManager::getFileNameForBin() {
     return binFileName;
 }
 
-std::string StorageManager::readRecord(size_t offset ,std::string fileName) {
-    std::ifstream inFile(fileName, std::ios::binary );
+std::string StorageManager::readRecord(uint32_t id) {
+    BTree tree(treeIndexPath);
+    auto [file_id, offset] = tree.search(id);
+    std::string fileName = getFileNameByIndex(file_id);
+
+    std::ifstream inFile(fileName, std::ios::binary);
     DataNode dataNode;
 
-    if (!inFile) return nullptr;
+    if (!inFile) return "No File";
 
-    size_t pos = offset * sizeof(DataNode);
-    inFile.seekg(pos);
+    inFile.seekg(offset);
     
     if(inFile.read(reinterpret_cast<char*>(&dataNode), sizeof(DataNode))) {
         auto data = dataNode.getData();
         return std::to_string(data.first) + " - " + data.second;
     }
-    return nullptr;
+    return "";
 }
 
 void StorageManager::writeRecord(std::ifstream file, uint32_t length, Buffer& buffer) {
@@ -68,10 +71,12 @@ void StorageManager::writeRecord(std::ifstream file, uint32_t length, Buffer& bu
     }
 }
 
-std::string StorageManager::getFileNameByIndex(size_t index) {
+std::string StorageManager::getFileNameByIndex(uint32_t index) {
     std::string binFileName = basepath + "/bin/chunk_file_" + std::to_string(index) + ".bin";
     return binFileName;
 }
+
+uint32_t StorageManager::getCurrentBinIndex() { return index; }
 
 void StorageManager::saveMetaData() {
     std::ofstream outFile(metaDataPath, std::ios::trunc);

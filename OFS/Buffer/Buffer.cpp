@@ -13,17 +13,19 @@ bool Buffer::isFull() { return used_bytes == max_bytes; }
 void Buffer::flush() {
     StorageManager storageManager;
     std::string filename = storageManager.getFileNameForBin();
+    uint32_t file_id = storageManager.getCurrentBinIndex();
 
-    if(saveTheNodesIntoBin(filename, records)) {
+    if(saveTheNodesIntoBin(filename, file_id, records)) {
         records.clear();
         used_bytes = 0;
     } else return;
 }
 
-bool Buffer::saveTheNodesIntoBin(const std::string filename, std::map<uint32_t, DataNode> records) {
+bool Buffer::saveTheNodesIntoBin(const std::string filename, uint32_t file_id, std::map<uint32_t, DataNode> records) {
     if(records.empty()) return false;
 
     std::ofstream outFile(filename, std::ios::binary | std::ios::out);
+    BTree tree(indexPath);
 
     if(!outFile) {
         std::cerr << "\033[31mERROR:Failed to create the bin file.\033[0m" << std::endl;
@@ -31,7 +33,9 @@ bool Buffer::saveTheNodesIntoBin(const std::string filename, std::map<uint32_t, 
     }
 
     for(auto [id, data]: records) {
+        uint64_t currPos = outFile.tellp();
         outFile.write(reinterpret_cast<const char*>(&data), sizeof(data));
+        tree.insert(id, file_id ,currPos);
     }
 
     outFile.close();
