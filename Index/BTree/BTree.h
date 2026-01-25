@@ -19,6 +19,7 @@ class BTree {
 
     public:
         BTree(std::string path);
+        ~BTree();
         void insert(uint32_t key, uint32_t file_id, uint64_t offset);
         RecordPointer search(uint32_t key);
 

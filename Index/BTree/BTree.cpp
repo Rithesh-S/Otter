@@ -23,9 +23,17 @@ BTree::BTree(std::string path) : indexPath(path), rootPageId(0), nextPageId(1) {
     }
 }
 
+BTree::~BTree() {
+    if(file.is_open()) {
+        file.flush();
+        file.close();
+    }
+}
+
 void BTree::writeNode(uint32_t pageId, const BTNode& node) {
     file.seekp(pageId * sizeof(BTNode));
     file.write(reinterpret_cast<const char*>(&node), sizeof(BTNode));
+    if(pageId == 0) file.flush();
 }
 
 BTNode BTree::readNode(uint32_t pageId) {
@@ -129,7 +137,9 @@ void BTree::insert(uint32_t key, uint32_t file_id, uint64_t offset) {
         writeNode(rootPageId, newNode);
         splitChild(rootPageId, 0, oldRootId);
         insertNonFull(rootPageId, key, file_id, offset);
+        if(offset == 0) file.flush();
     } else {
         insertNonFull(rootPageId, key, file_id, offset);
+        if(offset == 0) file.flush();
     }
 }

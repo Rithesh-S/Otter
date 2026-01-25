@@ -1,9 +1,14 @@
 #include "StorageManager.h"
-#include "../Buffer/Buffer.h"
+#include "../OFS/Buffer/Buffer.h"
 
 uint32_t StorageManager::index = 0;
-StorageManager::StorageManager() { loadMetaData(); }
+std::unique_ptr<BTree> StorageManager::tree = nullptr;
 StorageManager::~StorageManager() { saveMetaData(); }
+
+StorageManager::StorageManager() { 
+    tree = std::make_unique<BTree>(treeIndexPath);
+    loadMetaData(); 
+}
 
 void StorageManager::loadMetaData() {
     std::ifstream inFile(metaDataPath);
@@ -11,7 +16,6 @@ void StorageManager::loadMetaData() {
     if(inFile.is_open()) {
         inFile >> index;
         inFile.close();
-        // std::cout << "\033[32mSUCCESS: DB Engine resumed at bin id: " << index << ".\033[0m" << std::endl;   
     } else {
         index = -1;
         saveMetaData();
@@ -25,7 +29,13 @@ std::string StorageManager::getFileNameForBin() {
     return binFileName;
 }
 
-std::string StorageManager::readRecord(uint32_t id) {
+std::string StorageManager::readRecord(uint32_t id, Buffer& buffer) {
+
+    if(buffer.contains(id)) {
+       auto data = buffer.readData(id).getData();
+       return std::to_string(data.first) + " - " + data.second;
+    }
+
     BTree tree(treeIndexPath);
     auto [file_id, offset] = tree.search(id);
     std::string fileName = getFileNameByIndex(file_id);
@@ -33,7 +43,7 @@ std::string StorageManager::readRecord(uint32_t id) {
     std::ifstream inFile(fileName, std::ios::binary);
     DataNode dataNode;
 
-    if (!inFile) return "No File";
+    if (!inFile) return "No Records Found";
 
     inFile.seekg(offset);
     
@@ -41,34 +51,56 @@ std::string StorageManager::readRecord(uint32_t id) {
         auto data = dataNode.getData();
         return std::to_string(data.first) + " - " + data.second;
     }
-    return "";
+    return "No Records Found";
 }
 
-void StorageManager::writeRecord(std::ifstream file, uint32_t length, Buffer& buffer) {
+void StorageManager::writeRecord(std::ifstream& file, Buffer& buffer) {
     std::string line;
 
     while (std::getline(file, line)) {
         uint32_t id;
         std::string temp_id, msg;
-        char buf[124] = {0};
+        char buf[length] = {0};
 
         std::stringstream ss(line);
         
-        if (std::getline(ss, temp_id, ','))
-        id = std::stoull(temp_id);
+        if (std::getline(ss, temp_id, ',')) id = std::stoull(temp_id);
         std::getline(ss, msg, ',');
         
-        if (msg.size() > 124)
-        std::cerr << "\033[33mWARNING: The data size exceeds 124, hence excess length is truncated.\033[0m" << std::endl;
+        if (msg.size() > length) std::cerr << "\033[33mWARNING: The data size exceeds " << length << ", hence excess length is truncated.\033[0m" << std::endl;
         
         std::strncpy(buf, msg.c_str(), length);
         
         DataNode dataNode = DataNode(id, buf);
 
+        if(buffer.contains(id) || (tree->search(id).file_id != 0xFFFFFFFF)) {
+            std::cerr << "\033[33mWARNING: Duplicate ID found, Hence Ignored.\033[0m" << std::endl;
+            continue;
+        }
+
         buffer.writeData(id, dataNode, sizeof(dataNode));
 
         if (buffer.isFull()) buffer.flush();
     }
+}
+
+void StorageManager::writeRecord(uint32_t id, std::string msg, Buffer& buffer) { 
+    char buf[length] = {0};
+    
+    if (msg.size() > length) std::cerr << "\033[33mWARNING: The data size exceeds " << length << ", hence excess length is truncated.\033[0m" << std::endl;
+    
+    std::strncpy(buf, msg.c_str(), length);
+    
+    DataNode dataNode = DataNode(id, buf);
+
+    if(buffer.contains(id) || (tree->search(id).file_id != 0xFFFFFFFF)) {
+        std::cerr << "\033[33mWARNING: Duplicate ID found, Hence Ignored.\033[0m" << std::endl;
+        return;
+    }
+
+    buffer.writeData(id, dataNode, sizeof(dataNode));
+
+    if (buffer.isFull()) buffer.flush();
 }
 
 std::string StorageManager::getFileNameByIndex(uint32_t index) {
@@ -82,8 +114,8 @@ void StorageManager::saveMetaData() {
     std::ofstream outFile(metaDataPath, std::ios::trunc);
     if(outFile.is_open()) {
         outFile << index;
+        outFile.flush();
         outFile.close();
-        // std::cout << "\033[32mSUCCESS: DB Engine stored last used bin id: " << index << ".\033[0m" << std::endl;   
     }
 }
 

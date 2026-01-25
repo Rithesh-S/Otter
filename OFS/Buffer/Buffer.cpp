@@ -1,6 +1,6 @@
 #include "Buffer.h"
 
-void Buffer::writeData(uint32_t id, DataNode record, size_t size) {
+void Buffer::writeData(uint32_t id, DataNode& record, size_t size) {
     if(used_bytes + size > max_bytes) return;
     records[id] = record;
     used_bytes += size;
@@ -8,7 +8,11 @@ void Buffer::writeData(uint32_t id, DataNode record, size_t size) {
 
 std::map<uint32_t, DataNode> Buffer::readData() { return records; }
 
+DataNode Buffer::readData(uint32_t id) { return records[id]; }
+
 bool Buffer::isFull() { return used_bytes == max_bytes; }
+
+bool Buffer::contains(uint32_t id) { return records.find(id) != records.end(); }
 
 void Buffer::flush() {
     StorageManager storageManager;
@@ -21,7 +25,7 @@ void Buffer::flush() {
     } else return;
 }
 
-bool Buffer::saveTheNodesIntoBin(const std::string filename, uint32_t file_id, std::map<uint32_t, DataNode> records) {
+bool Buffer::saveTheNodesIntoBin(const std::string& filename, uint32_t file_id, std::map<uint32_t, DataNode>& records) {
     if(records.empty()) return false;
 
     std::ofstream outFile(filename, std::ios::binary | std::ios::out);
