@@ -1,4 +1,8 @@
 #include "Buffer.h"
+#include "../../StorageManager/StorageManager.h"
+#include "../../Index/BTree/BTree.h"
+
+Buffer::Buffer(StorageManager* storageManager, BTree* treeRef) : storageManager(storageManager), treeRef(treeRef) {}
 
 void Buffer::writeData(uint32_t id, DataNode& record, size_t size) {
     if(used_bytes + size > max_bytes) return;
@@ -15,9 +19,8 @@ bool Buffer::isFull() { return used_bytes == max_bytes; }
 bool Buffer::contains(uint32_t id) { return records.find(id) != records.end(); }
 
 void Buffer::flush() {
-    StorageManager storageManager;
-    std::string filename = storageManager.getFileNameForBin();
-    uint32_t file_id = storageManager.getCurrentBinIndex();
+    std::string filename = Buffer::storageManager -> getFileNameForBin();
+    uint32_t file_id = Buffer::storageManager -> getCurrentBinIndex();
 
     if(saveTheNodesIntoBin(filename, file_id, records)) {
         records.clear();
@@ -29,7 +32,7 @@ bool Buffer::saveTheNodesIntoBin(const std::string& filename, uint32_t file_id, 
     if(records.empty()) return false;
 
     std::ofstream outFile(filename, std::ios::binary | std::ios::out);
-    BTree tree(indexPath);
+    std::string indexPath = Buffer::storageManager -> getBTreeIndexPath();
 
     if(!outFile) {
         std::cerr << "\033[31mERROR:Failed to create the bin file.\033[0m" << std::endl;
@@ -39,7 +42,7 @@ bool Buffer::saveTheNodesIntoBin(const std::string& filename, uint32_t file_id, 
     for(auto [id, data]: records) {
         uint64_t currPos = outFile.tellp();
         outFile.write(reinterpret_cast<const char*>(&data), sizeof(data));
-        tree.insert(id, file_id ,currPos);
+        treeRef -> insert(id, file_id ,currPos);
     }
 
     outFile.close();

@@ -16,7 +16,6 @@ int main() {
     bool running = true;
     std::string command;
     
-    Buffer buffer;
     StorageManager storageManager;
 
     std::cout << "--------------- Welcome to Otter DB ---------------" << std::endl;
@@ -33,7 +32,7 @@ int main() {
 
             if (!file.is_open()) throw std::runtime_error("\033[31mERROR: File not found!\033[0m");
 
-            storageManager.writeRecord(file, buffer);
+            storageManager.writeRecord(file);
         } else if(command == "INSERT" || command == "insert") {
             uint32_t id;
             std::string data;
@@ -43,14 +42,14 @@ int main() {
             std::cout << "Enter the Data: \n";
             std::getline(std::cin >> std::ws, data);
 
-            storageManager.writeRecord(id, data, buffer);
+            storageManager.writeRecord(id, data);
         } else if(command == "SEARCH" || command == "search") {
             uint32_t id;
 
             std::cout << "Enter the Search ID: ";
             std::cin >> id;
 
-            std::cout << storageManager.readRecord(id, buffer) << std::endl;
+            std::cout << storageManager.readRecord(id) << std::endl;
         } else if(command == "EXIT" || command == "exit") {
             std::cout << "Shutting Down gracefully...";
             running = false;

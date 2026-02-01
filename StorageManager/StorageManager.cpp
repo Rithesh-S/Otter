@@ -1,23 +1,27 @@
 #include "StorageManager.h"
 #include "../OFS/Buffer/Buffer.h"
 
-uint32_t StorageManager::index = 0;
+uint32_t StorageManager::index = 0xFFFFFFFF;
 std::unique_ptr<BTree> StorageManager::tree = nullptr;
+std::unique_ptr<Buffer> StorageManager::buffer = nullptr;
+std::unique_ptr<WAL> StorageManager::wal = nullptr;
+
 StorageManager::~StorageManager() { saveMetaData(); }
 
 StorageManager::StorageManager() { 
-    tree = std::make_unique<BTree>(treeIndexPath);
+    tree = std::make_unique<BTree>(this,treeIndexPath);
+    buffer = std::make_unique<Buffer>(this, StorageManager::tree.get());
+    wal = std::make_unique<WAL>(this);
     loadMetaData(); 
 }
 
 void StorageManager::loadMetaData() {
     std::ifstream inFile(metaDataPath);
-
     if(inFile.is_open()) {
         inFile >> index;
         inFile.close();
     } else {
-        index = -1;
+        index = 0xFFFFFFFF;
         saveMetaData();
     }
 }
@@ -25,19 +29,18 @@ void StorageManager::loadMetaData() {
 std::string StorageManager::getFileNameForBin() {
     index++;
     saveMetaData();
-    std::string binFileName = basepath + "/bin/chunk_file_" + std::to_string(index) + ".bin";
+    std::string binFileName = basepath + "/Buffer/bin/chunk_file_" + std::to_string(index) + ".bin";
     return binFileName;
 }
 
-std::string StorageManager::readRecord(uint32_t id, Buffer& buffer) {
+std::string StorageManager::readRecord(uint32_t id) {
 
-    if(buffer.contains(id)) {
-       auto data = buffer.readData(id).getData();
+    if(buffer -> contains(id)) {
+       auto data = buffer -> readData(id).getData();
        return std::to_string(data.first) + " - " + data.second;
     }
 
-    BTree tree(treeIndexPath);
-    auto [file_id, offset] = tree.search(id);
+    auto [file_id, offset] = tree -> search(id);
     std::string fileName = getFileNameByIndex(file_id);
 
     std::ifstream inFile(fileName, std::ios::binary);
@@ -54,9 +57,8 @@ std::string StorageManager::readRecord(uint32_t id, Buffer& buffer) {
     return "No Records Found";
 }
 
-void StorageManager::writeRecord(std::ifstream& file, Buffer& buffer) {
+void StorageManager::writeRecord(std::ifstream& file) {
     std::string line;
-
     while (std::getline(file, line)) {
         uint32_t id;
         std::string temp_id, msg;
@@ -70,43 +72,51 @@ void StorageManager::writeRecord(std::ifstream& file, Buffer& buffer) {
         if (msg.size() > length) std::cerr << "\033[33mWARNING: The data size exceeds " << length << ", hence excess length is truncated.\033[0m" << std::endl;
         
         std::strncpy(buf, msg.c_str(), length);
-        
         DataNode dataNode = DataNode(id, buf);
+        wal -> writeWAL(dataNode);
 
-        if(buffer.contains(id) || (tree->search(id).file_id != 0xFFFFFFFF)) {
+        if(buffer -> contains(id) || (tree->search(id).file_id != 0xFFFFFFFF)) {
             std::cerr << "\033[33mWARNING: Duplicate ID found, Hence Ignored.\033[0m" << std::endl;
             continue;
         }
 
-        buffer.writeData(id, dataNode, sizeof(dataNode));
+        buffer -> writeData(id, dataNode, sizeof(dataNode));
 
-        if (buffer.isFull()) buffer.flush();
+        if (buffer -> isFull()) buffer -> flush();
     }
 }
 
-void StorageManager::writeRecord(uint32_t id, std::string msg, Buffer& buffer) { 
+void StorageManager::writeRecord(uint32_t id, std::string msg) { 
     char buf[length] = {0};
     
     if (msg.size() > length) std::cerr << "\033[33mWARNING: The data size exceeds " << length << ", hence excess length is truncated.\033[0m" << std::endl;
     
     std::strncpy(buf, msg.c_str(), length);
-    
     DataNode dataNode = DataNode(id, buf);
+    wal -> writeWAL(dataNode);
 
-    if(buffer.contains(id) || (tree->search(id).file_id != 0xFFFFFFFF)) {
+    if(buffer -> contains(id) || (tree->search(id).file_id != 0xFFFFFFFF)) {
         std::cerr << "\033[33mWARNING: Duplicate ID found, Hence Ignored.\033[0m" << std::endl;
         return;
     }
+    buffer -> writeData(id, dataNode, sizeof(dataNode));
+    if (buffer -> isFull()) buffer -> flush();
+}
 
-    buffer.writeData(id, dataNode, sizeof(dataNode));
-
-    if (buffer.isFull()) buffer.flush();
+void StorageManager::writeRecord(std::vector<DataNode> walBuf) { 
+    for(auto& node: walBuf) {
+        uint32_t id = node.getData().first;
+        buffer -> writeData(id, node, sizeof(node));
+        if (buffer -> isFull()) buffer -> flush();
+    }
 }
 
 std::string StorageManager::getFileNameByIndex(uint32_t index) {
-    std::string binFileName = basepath + "/bin/chunk_file_" + std::to_string(index) + ".bin";
+    std::string binFileName = basepath + "/Buffer/bin/chunk_file_" + std::to_string(index) + ".bin";
     return binFileName;
 }
+
+std::string StorageManager::getBTreeIndexPath() { return treeIndexPath; }
 
 uint32_t StorageManager::getCurrentBinIndex() { return index; }
 

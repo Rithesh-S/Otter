@@ -1,6 +1,7 @@
 #include "BTree.h"
+#include "../../StorageManager/StorageManager.h"
 
-BTree::BTree(std::string path) : indexPath(path), rootPageId(0), nextPageId(1) {
+BTree::BTree(StorageManager* sm, std::string path) : storageManager(sm), indexPath(path), rootPageId(0), nextPageId(1) {
     file.open(indexPath, std::ios::binary | std::ios::in | std::ios::out);
     
     if(!file.is_open()) {

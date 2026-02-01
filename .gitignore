@@ -1,13 +1,15 @@
+.vscode/*
+
 #exe file
 output/*
 !output/.gitkeep
 
 #chunk file
-OFS/bin/*
-!OFS/bin/.gitkeep
+OFS/Buffer/bin/*
+!OFS/Buffer/bin/.gitkeep
 Index/bin/*
 !Index/bin/.gitkeep
 
 #conf file
-OFS/config/*
-!OFS/config/.gitkeep
+OFS/Buffer/config/*
+!OFS/Buffer/config/.gitkeep

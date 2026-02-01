@@ -3,15 +3,11 @@
 #include <cstdint>
 #include <iostream>
 #include <cstring>
+#include "./RecordPointer.h"
 
 #define M 204
 
 #pragma pack(push, 1)
-
-struct RecordPointer {
-    uint32_t file_id;
-    uint64_t offset;
-};
 
 struct BTNode {
 
@@ -28,6 +24,7 @@ struct BTNode {
         is_leaf = true;
         std::memset(this, 0, sizeof(BTNode));
     }
+    ~BTNode() = default;
 };
 #pragma pack(pop)
 
