@@ -9,9 +9,9 @@ std::unique_ptr<WAL> StorageManager::wal = nullptr;
 StorageManager::~StorageManager() { saveMetaData(); }
 
 StorageManager::StorageManager() { 
-    tree = std::make_unique<BTree>(this,treeIndexPath);
+    tree = std::make_unique<BTree>(this, treeIndexPath);
     buffer = std::make_unique<Buffer>(this, StorageManager::tree.get());
-    wal = std::make_unique<WAL>(this);
+    wal = std::make_unique<WAL>(this, StorageManager::buffer.get());
     loadMetaData(); 
 }
 

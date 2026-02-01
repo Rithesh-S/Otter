@@ -8,6 +8,7 @@
 #include "./data/WALFrame.h"
 
 class StorageManager;
+class Buffer;
 
 class WAL {
     private:
@@ -17,16 +18,16 @@ class WAL {
         static std::unique_ptr<WALFrame> walFrame;
         std::fstream file;
         StorageManager* storageManager;
+        Buffer* bufferRef;
 
         void loadWALData();
         void saveNodesIntoWALBin();
         // uint32_t generateCRC();
         bool verifyCRC();
-        void readWAL();
+        std::vector<DataNode> readWAL();
         
     public:
-        WAL() = default;
-        WAL(StorageManager* sm);
+        WAL(StorageManager* sm, Buffer* bufferRef);
         ~WAL();
 
         void writeWAL(DataNode& node);
