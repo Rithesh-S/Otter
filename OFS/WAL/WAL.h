@@ -12,9 +12,9 @@ class Buffer;
 
 class WAL {
     private:
-        const std::string walBinPath = "OFS/WAL/bin/WALFrame.bin";
         static const uint16_t magic = 0xACE;
         static const uint8_t nodeSize = 128;
+
         static std::unique_ptr<WALFrame> walFrame;
         std::fstream file;
         StorageManager* storageManager;

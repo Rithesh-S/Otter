@@ -43,6 +43,16 @@ int main() {
             std::getline(std::cin >> std::ws, data);
 
             storageManager.writeRecord(id, data);
+        } else if(command == "UPDATE" || command == "update") {
+            uint32_t id;
+            std::string data;
+            
+            std::cout << "Enter the ID: ";
+            std::cin >> id;
+            std::cout << "Enter the Data: \n";
+            std::getline(std::cin >> std::ws, data);
+
+            storageManager.updateRecord(id, data);
         } else if(command == "SEARCH" || command == "search") {
             uint32_t id;
 

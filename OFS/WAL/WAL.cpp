@@ -6,13 +6,13 @@ std::unique_ptr<WALFrame> WAL::walFrame = nullptr;
 
 WAL::WAL(StorageManager* sm, Buffer* bufferRef) : storageManager(sm), bufferRef(bufferRef) {
     walFrame = std::make_unique<WALFrame>();
-    file.open(walBinPath, std::ios::binary | std::ios::in | std::ios::out);
+    file.open(sm -> getWALBinPath(), std::ios::binary | std::ios::in | std::ios::out);
 
     if(!file.is_open()) {
-        std::ofstream creator(walBinPath, std::ios::binary);
+        std::ofstream creator(sm->getWALBinPath(), std::ios::binary);
         creator.close();
 
-        file.open(walBinPath, std::ios::binary | std::ios::in | std::ios::out);
+        file.open(sm->getWALBinPath(), std::ios::binary | std::ios::in | std::ios::out);
         saveNodesIntoWALBin();
     }
     loadWALData();
@@ -28,6 +28,12 @@ WAL::~WAL() {
 void WAL::loadWALData() {
     file.seekg(0, std::ios::beg);
     file.read(reinterpret_cast<char*>(walFrame.get()), sizeof(WALFrame));
+
+    if(walFrame -> record_count >= 8) {
+        storageManager -> writeRecord(readWAL());
+        //clear the walframe
+    }
+
     if(walFrame -> record_count != 0) {
         std::vector<DataNode> records = readWAL();
         for(auto node: records) {
@@ -52,7 +58,11 @@ void WAL::writeWAL(DataNode& node) {
     std::memcpy(dest, &node, nodeSize);
     walFrame -> record_count++;
     saveNodesIntoWALBin();
-    readWAL();
+
+    if(walFrame -> record_count >= 8) {
+        storageManager -> writeRecord(readWAL());
+        //clear the walframe
+    }
 }
 
 std::vector<DataNode> WAL::readWAL() {
