@@ -6,13 +6,17 @@ BTree::BTree(StorageManager* sm, std::string path) : storageManager(sm), indexPa
     
     if(!file.is_open()) {
         std::ofstream creator(indexPath, std::ios::binary);
+        if(!creator) {
+            return;
+        }
         creator.close();
         
         file.open(indexPath, std::ios::binary | std::ios::in | std::ios::out);
     }
 
+    file.clear();
     file.seekg(0, std::ios::end);
-    if(file.tellp() == 0) {
+    if(file.tellp() <= 0) {
         BTNode root;
         root.is_leaf = 1;
         root.n = 0;
@@ -20,7 +24,7 @@ BTree::BTree(StorageManager* sm, std::string path) : storageManager(sm), indexPa
         nextPageId = 1;
     } else {
         file.seekg(0, std::ios::end);
-        nextPageId = (uint32_t)(file.tellg() / sizeof(BTNode));
+        nextPageId = static_cast<uint32_t>(file.tellg() / sizeof(BTNode));
     }
 }
 
@@ -50,8 +54,44 @@ RecordPointer BTree::search(uint32_t key) {
         BTNode node = readNode(currentPageId);
         int i = 0;
         while(i < node.n && key > node.keys[i]) i++;
-        if(i < node.n && key == node.keys[i]) return node.recordPointer[i];
-        if(node.is_leaf) return {0xFFFFFFFF, 0};
+        if( i < node.n && 
+            key == node.keys[i] && 
+            node.recordPointer[i].file_id != 0xFFFFFFFF && 
+            node.recordPointer[i].offset != 0xFFFFFFFFFFFFFFFF ) return node.recordPointer[i]; 
+        if(node.is_leaf) return {0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF};
+        currentPageId = node.child_page[i];
+    }
+}
+
+RecordPointer BTree::markAsDeleted(uint32_t key) {
+    uint32_t currentPageId = rootPageId;
+    while (true) {
+        BTNode node = readNode(currentPageId);
+        int i = 0;
+        while(i < node.n && key > node.keys[i]) i++;
+        if(i < node.n && key == node.keys[i]) {
+            RecordPointer rp = node.recordPointer[i];
+            node.recordPointer[i] = { 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF };
+            writeNode(currentPageId, node);
+            return rp;
+        }
+        if(node.is_leaf) return { 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF };
+        currentPageId = node.child_page[i];
+    }
+}
+
+bool BTree::findAndOverWrite(uint32_t key, uint32_t file_id, uint64_t offset) {
+    uint32_t currentPageId = rootPageId;
+    while (true) {
+        BTNode node = readNode(currentPageId);
+        int i = 0;
+        while(i < node.n && key > node.keys[i]) i++;
+        if( i < node.n && key == node.keys[i]) {
+            node.recordPointer[i] = { file_id, offset };
+            writeNode(currentPageId, node);
+            return true;
+        }
+        if(node.is_leaf) return false;
         currentPageId = node.child_page[i];
     }
 }
@@ -124,6 +164,7 @@ void BTree::insertNonFull(uint32_t pageId, uint32_t key, uint32_t file_id, uint6
 }
 
 void BTree::insert(uint32_t key, uint32_t file_id, uint64_t offset) {
+    if(findAndOverWrite(key, file_id, offset)) return;
     BTNode root = readNode(rootPageId);
     if(root.n == M - 1) {
         BTNode newNode;

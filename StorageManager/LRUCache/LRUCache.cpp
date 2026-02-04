@@ -14,11 +14,11 @@ LRU::~LRU() {
     lruMap.clear();
 }
 
-std::unique_ptr<std::fstream> LRU::getFileFromLRU(uint32_t file_id) {
+std::fstream* LRU::getFileFromLRU(uint32_t file_id) {
     if (lruMap.find(file_id) != lruMap.end()) {
         auto it = lruMap[file_id];
         lruList.splice(lruList.end(), lruList, it);
-        return std::move(it -> file);
+        return it -> file.get();
     }
 
     if (lruList.size() >= size) {
@@ -28,10 +28,19 @@ std::unique_ptr<std::fstream> LRU::getFileFromLRU(uint32_t file_id) {
         lruList.pop_front();
     }
 
-    auto newfile = std::make_unique<std::fstream>(sm -> getFilePathByIndex(file_id), std::ios::binary | std::ios::in | std::ios::out);
-    if(!newfile->is_open()) return nullptr;
-    lruList.push_back({file_id, std::move(newfile)});
+    std::string filePath = sm -> getFilePathByIndex(file_id);
+    auto newFile = std::make_unique<std::fstream>(filePath, std::ios::binary | std::ios::in | std::ios::out);
+
+    if(!newFile -> is_open()) {
+        std::ofstream creator(filePath, std::ios::binary);
+        if(!creator) return nullptr;
+        creator.close();
+
+        newFile -> open(filePath, std::ios::binary | std::ios::in | std::ios::out);
+    }
+
+    lruList.push_back({file_id, std::move(newFile)});
     lruMap[file_id] = std::prev(lruList.end());
 
-    return std::move(lruList.back().file);
+    return lruList.back().file.get();
 }

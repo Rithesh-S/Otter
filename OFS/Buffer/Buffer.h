@@ -19,7 +19,7 @@ class Buffer {
         StorageManager* storageManager;
         BTree* treeRef;
 
-        bool saveTheNodesIntoBin(const std::string& filename, uint32_t file_id, std::map<uint32_t, DataNode>& records);
+        bool saveTheNodesIntoBin(std::map<uint32_t, DataNode>& records);
 
     public:
         Buffer(StorageManager* storageManager, BTree* treeRef);
@@ -31,4 +31,5 @@ class Buffer {
         std::map<uint32_t, DataNode> readData();
         DataNode readData(uint32_t id);
         bool contains(uint32_t id);
+        void removeData(uint32_t id);
 };

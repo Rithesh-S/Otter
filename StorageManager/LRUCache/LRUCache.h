@@ -21,5 +21,5 @@ class LRU {
     public:
         LRU(StorageManager* sm, size_t size);
         ~LRU();
-        std::unique_ptr<std::fstream> getFileFromLRU(uint32_t file_id);
+        std::fstream* getFileFromLRU(uint32_t file_id);
 };

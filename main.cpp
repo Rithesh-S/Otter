@@ -60,6 +60,13 @@ int main() {
             std::cin >> id;
 
             std::cout << storageManager.readRecord(id) << std::endl;
+        } else if(command == "delete" || command == "DELETE") {
+            uint32_t id;
+
+            std::cout << "Enter the Delete ID: ";
+            std::cin >> id;
+
+            storageManager.deleteRecord(id);
         } else if(command == "EXIT" || command == "exit") {
             std::cout << "Shutting Down gracefully...";
             running = false;

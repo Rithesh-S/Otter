@@ -20,15 +20,16 @@ class WAL {
         StorageManager* storageManager;
         Buffer* bufferRef;
 
-        void loadWALData();
         void saveNodesIntoWALBin();
         // uint32_t generateCRC();
         bool verifyCRC();
         std::vector<DataNode> readWAL();
+        void walFrameClear();
         
     public:
-        WAL(StorageManager* sm, Buffer* bufferRef);
+        WAL(StorageManager* sm, Buffer* bufferRef, std::string binPath);
         ~WAL();
 
+        void loadWALData();
         void writeWAL(DataNode& node);
 };

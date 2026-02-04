@@ -9,6 +9,10 @@ OFS/Buffer/bin/*
 !OFS/Buffer/bin/.gitkeep
 Index/bin/*
 !Index/bin/.gitkeep
+StorageManager/InsertionQueue/bin/*
+!StorageManager/InsertionQueue/bin/.gitkeep
+OFS/WAL/bin/*
+!OFS/WAL/bin/.gitkeep
 
 #conf file
 OFS/Buffer/config/*

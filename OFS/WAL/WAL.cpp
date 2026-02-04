@@ -4,18 +4,18 @@
 
 std::unique_ptr<WALFrame> WAL::walFrame = nullptr;
 
-WAL::WAL(StorageManager* sm, Buffer* bufferRef) : storageManager(sm), bufferRef(bufferRef) {
+WAL::WAL(StorageManager* sm, Buffer* bufferRef, std::string binPath) : storageManager(sm), bufferRef(bufferRef) {
     walFrame = std::make_unique<WALFrame>();
-    file.open(sm -> getWALBinPath(), std::ios::binary | std::ios::in | std::ios::out);
-
+    file.open(binPath, std::ios::binary | std::ios::in | std::ios::out);
+    
     if(!file.is_open()) {
-        std::ofstream creator(sm->getWALBinPath(), std::ios::binary);
+        std::ofstream creator(binPath, std::ios::binary);
+        if(!creator) return;
         creator.close();
-
-        file.open(sm->getWALBinPath(), std::ios::binary | std::ios::in | std::ios::out);
+        
+        file.open(binPath, std::ios::binary | std::ios::in | std::ios::out);
         saveNodesIntoWALBin();
     }
-    loadWALData();
 }
 
 WAL::~WAL() {
@@ -31,21 +31,23 @@ void WAL::loadWALData() {
 
     if(walFrame -> record_count >= 8) {
         storageManager -> writeRecord(readWAL());
-        //clear the walframe
+        walFrameClear();
+        saveNodesIntoWALBin();
+        return;
     }
-
-    if(walFrame -> record_count != 0) {
-        std::vector<DataNode> records = readWAL();
-        for(auto node: records) {
-            auto [id, data] = node.getData();
-            bufferRef->writeData(id, node, sizeof(node));
-        }
-    }
+    
+    if(walFrame -> record_count != 0) storageManager -> writeRecord(readWAL());
 }
 
 void WAL::saveNodesIntoWALBin() { 
     file.seekg(0, std::ios::beg);
     file.write(reinterpret_cast<const char*>(walFrame.get()), sizeof(WALFrame)); 
+}
+
+void WAL::walFrameClear() {
+    walFrame -> record_count = 0;
+    walFrame -> crc = 0;
+    for(size_t i = 0; i < 1024; i++) walFrame -> node[i] = '0';
 }
 
 void WAL::writeWAL(DataNode& node) {
@@ -61,7 +63,9 @@ void WAL::writeWAL(DataNode& node) {
 
     if(walFrame -> record_count >= 8) {
         storageManager -> writeRecord(readWAL());
-        //clear the walframe
+        walFrameClear();
+        saveNodesIntoWALBin();
+        return;
     }
 }
 
@@ -74,8 +78,8 @@ std::vector<DataNode> WAL::readWAL() {
         char* dest = &walFrame->node[i * nodeSize];
         DataNode* node = reinterpret_cast<DataNode*>(dest);
         auto [id, data] = node->getData();
-        std::cout << "Record ID: " << id << std::endl;
-        std::cout << "Record Data: " << data << std::endl;
+        // std::cout << "Record ID: " << id << std::endl;
+        // std::cout << "Record Data: " << data << std::endl;
         records.push_back(*node);
     }
     return records;

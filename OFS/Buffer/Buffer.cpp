@@ -19,32 +19,26 @@ bool Buffer::isFull() { return used_bytes == max_bytes; }
 bool Buffer::contains(uint32_t id) { return records.find(id) != records.end(); }
 
 void Buffer::flush() {
-    std::string filename = Buffer::storageManager -> getFilePathForBinFlush();
-    uint32_t file_id = Buffer::storageManager -> getCurrentBinIndex();
-
-    if (saveTheNodesIntoBin(filename, file_id, records)) {
+    if (saveTheNodesIntoBin(records)) {
         records.clear();
         used_bytes = 0;
     }
     else return;
 }
 
-bool Buffer::saveTheNodesIntoBin(const std::string &filename, uint32_t file_id, std::map<uint32_t, DataNode> &records) {
+bool Buffer::saveTheNodesIntoBin(std::map<uint32_t, DataNode> &records) {
     if (records.empty()) return false;
-
-    std::ofstream outFile(filename, std::ios::binary | std::ios::out);
-
-    if (!outFile) {
-        std::cerr << "\033[31mERROR:Failed to create the bin file.\033[0m" << std::endl;
-        return false;
-    }
-
     for (auto [id, data] : records) {
-        uint64_t currPos = outFile.tellp();
-        outFile.write(reinterpret_cast<const char *>(&data), sizeof(data));
-        treeRef -> insert(id, file_id, currPos);
+        auto [file_id, offset] = treeRef -> search(id);
+        if(file_id != 0xFFFFFFFF && offset != 0xFFFFFFFFFFFFFFFF) storageManager -> overWriteRecord(file_id, offset, data);
+        else {
+            auto [rp, file] = storageManager -> getInsertionPosAndFile();
+            file -> seekg(rp.offset, std::ios::beg);
+            file -> write(reinterpret_cast<const char *>(&data), sizeof(data));
+            treeRef -> insert(id, rp.file_id, rp.offset);
+        }
     }
-
-    outFile.close();
     return true;
 }
+
+void Buffer::removeData(uint32_t id) { records.erase(id); }
