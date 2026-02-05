@@ -24,12 +24,12 @@ class WAL {
         // uint32_t generateCRC();
         bool verifyCRC();
         std::vector<DataNode> readWAL();
-        void walFrameClear();
         
     public:
         WAL(StorageManager* sm, Buffer* bufferRef, std::string binPath);
         ~WAL();
-
+        
         void loadWALData();
+        void walFrameClearAndSave();
         void writeWAL(DataNode& node);
 };

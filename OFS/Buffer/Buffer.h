@@ -10,6 +10,7 @@
 
 class StorageManager;
 class BTree;
+class WAL;
 
 class Buffer {
     private:

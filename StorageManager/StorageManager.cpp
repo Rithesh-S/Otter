@@ -31,6 +31,8 @@ std::string StorageManager::getInsertionQueueBinPath() { return iQueueBinPath; }
 
 uint32_t StorageManager::getCurrentBinIndex() { return index; }
 
+void StorageManager::walFrameClearAndSave() { wal -> walFrameClearAndSave(); }
+
 std::string StorageManager::getFilePathByIndex(uint32_t index) {
     std::string binFileName = basepath + "/Buffer/bin/chunk_file_" + std::to_string(index) + ".bin";
     return binFileName;
@@ -94,6 +96,7 @@ void StorageManager::overWriteRecord(uint32_t file_id, uint64_t offset, DataNode
     auto file = getFileByIndex(file_id);
     file -> seekp(offset, std::ios::beg);
     file -> write(reinterpret_cast<const char *>(&node), sizeof(DataNode));
+    file -> flush();
 }
 
 void StorageManager::writeRecord(std::ifstream &file) {
@@ -146,7 +149,6 @@ void StorageManager::writeRecord(std::vector<DataNode> walBuf) {
     for (auto &node : walBuf) {
         uint32_t id = node.getData().first;
         buffer -> writeData(id, node, sizeof(node));
-        if (buffer -> isFull()) buffer -> flush();
     }
 }
 
@@ -162,7 +164,6 @@ void StorageManager::updateRecord(uint32_t id, std::string msg) {
     if (buffer -> contains(id)) buffer -> writeData(id, dataNode, sizeof(dataNode));
     else {
         auto [file_id, offset] = tree -> search(id);
-
         if (file_id != 0xFFFFFFFF) overWriteRecord(file_id, offset, dataNode);
         else std::cerr << "\033[33mWARNING: ID not found!\033[0m" << std::endl;
     }

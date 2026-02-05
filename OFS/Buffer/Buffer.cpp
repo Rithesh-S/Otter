@@ -21,6 +21,7 @@ bool Buffer::contains(uint32_t id) { return records.find(id) != records.end(); }
 void Buffer::flush() {
     if (saveTheNodesIntoBin(records)) {
         records.clear();
+        storageManager -> walFrameClearAndSave();
         used_bytes = 0;
     }
     else return;
@@ -34,7 +35,8 @@ bool Buffer::saveTheNodesIntoBin(std::map<uint32_t, DataNode> &records) {
         else {
             auto [rp, file] = storageManager -> getInsertionPosAndFile();
             file -> seekg(rp.offset, std::ios::beg);
-            file -> write(reinterpret_cast<const char *>(&data), sizeof(data));
+            file -> write(reinterpret_cast<const char*>(&data), sizeof(data));
+            file -> flush();
             treeRef -> insert(id, rp.file_id, rp.offset);
         }
     }

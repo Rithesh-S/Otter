@@ -6,9 +6,7 @@ BTree::BTree(StorageManager* sm, std::string path) : storageManager(sm), indexPa
     
     if(!file.is_open()) {
         std::ofstream creator(indexPath, std::ios::binary);
-        if(!creator) {
-            return;
-        }
+        if(!creator) return;
         creator.close();
         
         file.open(indexPath, std::ios::binary | std::ios::in | std::ios::out);

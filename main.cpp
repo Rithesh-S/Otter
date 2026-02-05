@@ -26,7 +26,7 @@ int main() {
         if(command == "LOAD" || command == "load") {
             std::string fileName;
 
-            std::cout << "Enter the CSV File name: ";
+            // std::cout << "Enter the CSV File name: ";
             std::cin >> fileName;
             std::ifstream file(fileName);
 
@@ -37,9 +37,9 @@ int main() {
             uint32_t id;
             std::string data;
 
-            std::cout << "Enter the ID: ";
+            // std::cout << "Enter the ID: ";
             std::cin >> id;
-            std::cout << "Enter the Data: \n";
+            // std::cout << "Enter the Data: \n";
             std::getline(std::cin >> std::ws, data);
 
             storageManager.writeRecord(id, data);
@@ -47,23 +47,23 @@ int main() {
             uint32_t id;
             std::string data;
             
-            std::cout << "Enter the ID: ";
+            // std::cout << "Enter the ID: ";
             std::cin >> id;
-            std::cout << "Enter the Data: \n";
+            // std::cout << "Enter the Data: \n";
             std::getline(std::cin >> std::ws, data);
 
             storageManager.updateRecord(id, data);
         } else if(command == "SEARCH" || command == "search") {
             uint32_t id;
 
-            std::cout << "Enter the Search ID: ";
+            // std::cout << "Enter the Search ID: ";
             std::cin >> id;
 
             std::cout << storageManager.readRecord(id) << std::endl;
         } else if(command == "delete" || command == "DELETE") {
             uint32_t id;
 
-            std::cout << "Enter the Delete ID: ";
+            // std::cout << "Enter the Delete ID: ";
             std::cin >> id;
 
             storageManager.deleteRecord(id);

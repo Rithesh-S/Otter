@@ -7,6 +7,7 @@ InsertionQueue::InsertionQueue(StorageManager* sm, std::string binPath) : storag
     file.open(binPath, std::ios::binary | std::ios::in | std::ios::out);
     if(!file.is_open()) {
         std::ofstream creator(binPath, std::ios::binary);
+        if(!creator) return;
         creator.close();
 
         file.open(binPath, std::ios::binary | std::ios::in | std::ios::out);

@@ -31,23 +31,24 @@ void WAL::loadWALData() {
 
     if(walFrame -> record_count >= 8) {
         storageManager -> writeRecord(readWAL());
-        walFrameClear();
-        saveNodesIntoWALBin();
+        bufferRef -> flush();
         return;
     }
     
-    if(walFrame -> record_count != 0) storageManager -> writeRecord(readWAL());
+    if(walFrame -> record_count > 0 && walFrame -> record_count < 8) storageManager -> writeRecord(readWAL());
 }
 
 void WAL::saveNodesIntoWALBin() { 
     file.seekg(0, std::ios::beg);
     file.write(reinterpret_cast<const char*>(walFrame.get()), sizeof(WALFrame)); 
+    file.flush();
 }
 
-void WAL::walFrameClear() {
+void WAL::walFrameClearAndSave() {
     walFrame -> record_count = 0;
     walFrame -> crc = 0;
     for(size_t i = 0; i < 1024; i++) walFrame -> node[i] = '0';
+    saveNodesIntoWALBin();
 }
 
 void WAL::writeWAL(DataNode& node) {
@@ -56,17 +57,12 @@ void WAL::writeWAL(DataNode& node) {
         return;
     }
     
-    char* dest = &walFrame->node[walFrame->record_count * nodeSize];
+    char* dest = &walFrame -> node[walFrame -> record_count * nodeSize];
     std::memcpy(dest, &node, nodeSize);
     walFrame -> record_count++;
     saveNodesIntoWALBin();
 
-    if(walFrame -> record_count >= 8) {
-        storageManager -> writeRecord(readWAL());
-        walFrameClear();
-        saveNodesIntoWALBin();
-        return;
-    }
+    if(walFrame -> record_count > 8) bufferRef -> flush();
 }
 
 std::vector<DataNode> WAL::readWAL() {
@@ -74,12 +70,10 @@ std::vector<DataNode> WAL::readWAL() {
     file.read(reinterpret_cast<char*>(walFrame.get()), sizeof(WALFrame));
     std::vector<DataNode> records;
 
-    for(size_t i = 0; i < walFrame->record_count; i++) {
-        char* dest = &walFrame->node[i * nodeSize];
+    for(size_t i = 0; i < walFrame -> record_count; i++) {
+        char* dest = &walFrame -> node[i * nodeSize];
         DataNode* node = reinterpret_cast<DataNode*>(dest);
-        auto [id, data] = node->getData();
-        // std::cout << "Record ID: " << id << std::endl;
-        // std::cout << "Record Data: " << data << std::endl;
+        auto [id, data] = node -> getData();
         records.push_back(*node);
     }
     return records;

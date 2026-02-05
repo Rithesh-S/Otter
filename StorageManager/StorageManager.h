@@ -50,6 +50,7 @@ class StorageManager {
         void updateRecord(uint32_t id, std::string msg);
         void deleteRecord(uint32_t id);
 
+        void walFrameClearAndSave();
         uint32_t getCurrentBinIndex();
         uint32_t getNewIndexForBinFlush();
         std::string getWALBinPath();
