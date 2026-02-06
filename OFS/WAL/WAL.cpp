@@ -16,6 +16,7 @@ WAL::WAL(StorageManager* sm, Buffer* bufferRef, std::string binPath) : storageMa
         file.open(binPath, std::ios::binary | std::ios::in | std::ios::out);
         saveNodesIntoWALBin();
     }
+    generateCRC32Table();
 }
 
 WAL::~WAL() {
@@ -52,7 +53,8 @@ void WAL::walFrameClearAndSave() {
 }
 
 void WAL::writeWAL(DataNode& node) {
-    if(walFrame -> magic != magic && !verifyCRC())  {
+    uint32_t actualCRC = verifyCRC();
+    if((walFrame -> magic != magic) || !actualCRC)  {
         std::cerr << "\033[31mERROR:Inappropiate WAL File detected.\033[0m" << std::endl;
         return;
     }
@@ -60,8 +62,9 @@ void WAL::writeWAL(DataNode& node) {
     char* dest = &walFrame -> node[walFrame -> record_count * nodeSize];
     std::memcpy(dest, &node, nodeSize);
     walFrame -> record_count++;
+    walFrame -> crc = generateCRC(walFrame -> node, walFrame -> record_count * nodeSize);
     saveNodesIntoWALBin();
-
+    
     if(walFrame -> record_count > 8) bufferRef -> flush();
 }
 
@@ -80,7 +83,36 @@ std::vector<DataNode> WAL::readWAL() {
 }
 
 bool WAL::verifyCRC() {
-    return true;
+    uint32_t receivedCRC = walFrame -> crc;
+    uint32_t actualCRC = generateCRC(walFrame -> node, walFrame -> record_count * nodeSize);
+    return receivedCRC == actualCRC;
+}
+
+uint32_t WAL::generateCRC(const void* data, size_t length) {
+    uint32_t crc = 0xFFFFFFFF;
+    const uint8_t* byte_data = reinterpret_cast<const uint8_t*>(data);
+
+    for (size_t i = 0; i < length; i++) {
+        uint8_t table_index = (crc ^ byte_data[i]) & 0xFF;
+        crc = (crc >> 8) ^ crc32_table[table_index];
+    }
+
+    return crc ^ 0xFFFFFFFF; 
+}
+
+void WAL::generateCRC32Table() {
+    uint32_t polynomial = key;
+    for (uint32_t i = 0; i < 256; i++) {
+        uint32_t crc = i;
+        for (uint32_t j = 0; j < 8; j++) {
+            if (crc & 1) {
+                crc = (crc >> 1) ^ polynomial;
+            } else {
+                crc >>= 1;
+            }
+        }
+        crc32_table[i] = crc;
+    }
 }
 
 

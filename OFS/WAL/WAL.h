@@ -14,14 +14,17 @@ class WAL {
     private:
         static const uint16_t magic = 0xACE;
         static const uint8_t nodeSize = 128;
-
+        static const uint32_t key = 0xEDB88320;
+        uint32_t crc32_table[256] = {0};
+        
         static std::unique_ptr<WALFrame> walFrame;
         std::fstream file;
         StorageManager* storageManager;
         Buffer* bufferRef;
-
+        
+        void generateCRC32Table();
         void saveNodesIntoWALBin();
-        // uint32_t generateCRC();
+        uint32_t generateCRC(const void* data, size_t length);
         bool verifyCRC();
         std::vector<DataNode> readWAL();
         
