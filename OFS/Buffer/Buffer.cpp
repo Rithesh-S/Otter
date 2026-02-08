@@ -1,8 +1,10 @@
 #include "Buffer.h"
 #include "../../StorageManager/StorageManager.h"
+#include "../../TransactionManager/Transaction.h"
 #include "../../Index/BTree/BTree.h"
 
-Buffer::Buffer(StorageManager *storageManager, BTree *treeRef) : storageManager(storageManager), treeRef(treeRef) {}
+Buffer::Buffer(StorageManager *storageManager, BTree *treeRef, Transaction* transactionRef) : 
+    storageManager(storageManager), treeRef(treeRef), transactionRef(transactionRef) {}
 
 void Buffer::writeData(uint32_t id, DataNode &record, size_t size) {
     if (used_bytes + size > max_bytes) return;
@@ -29,6 +31,8 @@ void Buffer::flush() {
 
 bool Buffer::saveTheNodesIntoBin(std::map<uint32_t, DataNode> &records) {
     if (records.empty()) return false;
+    if (!transactionRef -> begin()) return false;
+
     for (auto [id, data] : records) {
         auto [file_id, offset] = treeRef -> search(id);
         if(file_id != 0xFFFFFFFF && offset != 0xFFFFFFFFFFFFFFFF) storageManager -> overWriteRecord(file_id, offset, data);
@@ -40,6 +44,8 @@ bool Buffer::saveTheNodesIntoBin(std::map<uint32_t, DataNode> &records) {
             treeRef -> insert(id, rp.file_id, rp.offset);
         }
     }
+
+    transactionRef -> commit();
     return true;
 }
 

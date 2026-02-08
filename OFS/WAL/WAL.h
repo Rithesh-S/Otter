@@ -8,6 +8,7 @@
 #include "./data/WALFrame.h"
 
 class StorageManager;
+class Transaction;
 class Buffer;
 
 class WAL {
@@ -20,6 +21,7 @@ class WAL {
         static std::unique_ptr<WALFrame> walFrame;
         std::fstream file;
         StorageManager* storageManager;
+        Transaction* transactionRef;
         Buffer* bufferRef;
         
         void generateCRC32Table();
@@ -29,7 +31,7 @@ class WAL {
         std::vector<DataNode> readWAL();
         
     public:
-        WAL(StorageManager* sm, Buffer* bufferRef, std::string binPath);
+        WAL(StorageManager* sm, Buffer* bufferRef, Transaction* transactionRef, std::string binPath);
         ~WAL();
         
         void loadWALData();

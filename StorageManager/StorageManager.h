@@ -13,6 +13,7 @@
 #include "../OFS/WAL/WAL.h"
 #include "./LRUCache/LRUCache.h"
 #include "./InsertionQueue/InsertionQueue.h"
+#include "../TransactionManager/Transaction.h"
 
 class StorageManager {
     private:
@@ -33,6 +34,7 @@ class StorageManager {
         static std::unique_ptr<WAL> wal;
         static std::unique_ptr<LRU> lruCache;
         static std::unique_ptr<InsertionQueue> iQueue;
+        static std::unique_ptr<Transaction> transaction;
 
         void writeRecord(std::vector<DataNode> walBuf);
         void overWriteRecord(uint32_t file_id, uint64_t offset, DataNode &node);

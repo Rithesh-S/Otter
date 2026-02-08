@@ -10,7 +10,7 @@
 
 class StorageManager;
 class BTree;
-class WAL;
+class Transaction;
 
 class Buffer {
     private:
@@ -18,12 +18,13 @@ class Buffer {
         std::map<uint32_t, DataNode> records;
         size_t used_bytes = 0;
         StorageManager* storageManager;
+        Transaction* transactionRef;
         BTree* treeRef;
 
         bool saveTheNodesIntoBin(std::map<uint32_t, DataNode>& records);
 
     public:
-        Buffer(StorageManager* storageManager, BTree* treeRef);
+        Buffer(StorageManager* storageManager, BTree* treeRef, Transaction* transactionRef);
         ~Buffer() = default;
 
         void writeData(uint32_t id, DataNode& record, size_t size);

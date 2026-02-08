@@ -1,10 +1,12 @@
 #include "WAL.h"
 #include "../../StorageManager/StorageManager.h"
+#include "../../TransactionManager/Transaction.h"
 #include "../Buffer/Buffer.h"
 
 std::unique_ptr<WALFrame> WAL::walFrame = nullptr;
 
-WAL::WAL(StorageManager* sm, Buffer* bufferRef, std::string binPath) : storageManager(sm), bufferRef(bufferRef) {
+WAL::WAL(StorageManager* sm, Buffer* bufferRef, Transaction* transactionRef ,std::string binPath) :
+    storageManager(sm), transactionRef(transactionRef), bufferRef(bufferRef) {
     walFrame = std::make_unique<WALFrame>();
     file.open(binPath, std::ios::binary | std::ios::in | std::ios::out);
     
@@ -29,6 +31,13 @@ WAL::~WAL() {
 void WAL::loadWALData() {
     file.seekg(0, std::ios::beg);
     file.read(reinterpret_cast<char*>(walFrame.get()), sizeof(WALFrame));
+
+    if(transactionRef -> isFailed()) {
+        transactionRef -> commit();
+        storageManager -> writeRecord(readWAL());
+        bufferRef -> flush();
+        return;
+    }
 
     if(walFrame -> record_count >= 8) {
         storageManager -> writeRecord(readWAL());
@@ -56,6 +65,7 @@ void WAL::writeWAL(DataNode& node) {
     uint32_t actualCRC = verifyCRC();
     if((walFrame -> magic != magic) || !actualCRC)  {
         std::cerr << "\033[31mERROR:Inappropiate WAL File detected.\033[0m" << std::endl;
+        walFrameClearAndSave();
         return;
     }
     

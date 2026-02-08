@@ -9,14 +9,16 @@ std::unique_ptr<Buffer> StorageManager::buffer = nullptr;
 std::unique_ptr<WAL> StorageManager::wal = nullptr;
 std::unique_ptr<LRU> StorageManager::lruCache = nullptr;
 std::unique_ptr<InsertionQueue> StorageManager::iQueue = nullptr;
+std::unique_ptr<Transaction> StorageManager::transaction = nullptr;
 
 StorageManager::~StorageManager() { saveMetaData(); }
 
 StorageManager::StorageManager() { 
     loadMetaData();
+    if (transaction == nullptr) transaction = std::make_unique<Transaction>();
     if (tree == nullptr) tree = std::make_unique<BTree>(this, treeIndexPath);
-    if (buffer == nullptr) buffer = std::make_unique<Buffer>(this, tree.get());
-    if (wal == nullptr) wal = std::make_unique<WAL>(this, buffer.get(), walBinPath);
+    if (buffer == nullptr) buffer = std::make_unique<Buffer>(this, tree.get(), transaction.get());
+    if (wal == nullptr) wal = std::make_unique<WAL>(this, buffer.get(), transaction.get(), walBinPath);
     if (lruCache == nullptr) lruCache = std::make_unique<LRU>(this, cacheSize);
     if (iQueue == nullptr) iQueue = std::make_unique<InsertionQueue>(this, iQueueBinPath);
 
