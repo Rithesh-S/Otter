@@ -42,5 +42,6 @@ void InsertionQueue::saveBinData() {
         insertionQueue.pop();
     }
     file.flush();
+    file.close();
 }
 
