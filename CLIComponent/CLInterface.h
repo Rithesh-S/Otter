@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <iostream>
 #include "../QueryProcessor/Lexer/Lexer.h"
+#include "../QueryProcessor/Parser/Parser.h"
 
 class StorageManager;
 

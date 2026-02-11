@@ -5,19 +5,19 @@ CLInterface::CLInterface(StorageManager* sm) : running(true), sm(sm) {}
 
 void CLInterface::printHelp() {
     std::cout << "\n--- Otter DB Help Menu ---\n"
-            << "+-------------------+-----------------------------------+\n" 
-            << "| INSERT <id> <msg> | Add a new record                  |\n"
-            << "+-------------------+-----------------------------------+\n" 
-            << "| READ   <id>       | Fetch a record                    |\n"
-            << "+-------------------+-----------------------------------+\n" 
-            << "| UPDATE <id> <msg> | Modify a record                   |\n"
-            << "+-------------------+-----------------------------------+\n" 
-            << "| DELETE <id>       | Remove a record                   |\n"
-            << "+-------------------+-----------------------------------+\n" 
-            << "| EXIT              | Close the database                |\n"
-            << "+-------------------+-----------------------------------+\n" 
-            << "| *msg - do not exceeds 124 character, else terimnated! |\n"
-            << "+-------------------------------------------------------+\n" 
+            << "+--------------------+-----------------------------------+\n" 
+            << "| INSERT <id> <msg>; | Add a new record                  |\n"
+            << "+--------------------+-----------------------------------+\n" 
+            << "| SEARCH <id>;       | Fetch a record                    |\n"
+            << "+--------------------+-----------------------------------+\n" 
+            << "| UPDATE <id> <msg>; | Modify a record                   |\n"
+            << "+--------------------+-----------------------------------+\n" 
+            << "| DELETE <id>;       | Remove a record                   |\n"
+            << "+--------------------+-----------------------------------+\n" 
+            << "| EXIT               | Close the database                |\n"
+            << "+--------------------+-----------------------------------+\n" 
+            << "| *msg - do not exceeds 124 character, else truncated!   |\n"
+            << "+--------------------------------------------------------+\n" 
             << std::endl;
 }
 
@@ -39,14 +39,22 @@ void CLInterface::start() {
 }
 
 void CLInterface::processCommand(std::string &cmd) {
-    std::string lowerCmd = std::move(cmd);
-    for (auto& c : lowerCmd) c = toupper(c);
+    std::string upperCmd = cmd;
+    for (auto& c : upperCmd) c = toupper(c);
 
-    Lexer lexer(lowerCmd);
-    lexer.tokenize();
+    if (upperCmd == "EXIT" || upperCmd == "QUIT") {
+        std::cout << "\033[32mSUCCESS: Shutting Down Gracefully...\033[0m" << std::endl;
+        running = false;
+    }
+    else if (upperCmd == "HELP") printHelp();
+    else {
+        Lexer lexer(cmd);
+        lexer.tokenize();
+        Parser parser(lexer.getTokens());
+        parser.parse();
+    }
 
-    // if (command == "EXIT" || command == "QUIT") running = false;
-    // else if (command == "HELP") printHelp();
+
     // else if (command == "INSERT") {
     //     uint32_t id;
     //     if (!(ss >> id)) {

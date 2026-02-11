@@ -8,7 +8,7 @@ char Lexer::peek() { return *currPos_; }
 
 std::vector<Token> Lexer::getTokens() { return tokens_; }
 
-bool Lexer::isDigit(char ch) { return ch > '0' && ch < '9'; }
+bool Lexer::isDigit(char ch) { return ch >= '0' && ch <= '9'; }
 
 void Lexer::consume(TokenType type, std::string word) { tokens_.push_back(Token(type,word)); }
 
@@ -23,6 +23,7 @@ std::string Lexer::getString(char stop) {
         word += peek();
         move();
     }
+    if(peek() != stop && stop == '\'') throw std::runtime_error(std::string("\033[31mERROR: Expected '") + stop + "'.\033[0m");
     if(isAtEnd()) throw std::runtime_error(std::string("\033[31mERROR: Expected '") + stop + "'.\033[0m");
     return word;
 }
@@ -32,6 +33,9 @@ void Lexer::tokenize() {
         scanToken();
     }
     consume(TokenType::END_OF_FILE,"");
+    // for(auto i : tokens_) {
+    //     std::cout << tokenType(i.getTokenType()) << " " << i.token() << std::endl;
+    // }
     return;
 }
 
@@ -74,7 +78,8 @@ void Lexer::scanToken() {
                 if(isDigit(peek())) consume(TokenType::ID,getString(' '));
                 else { 
                     w = getString(' ');
-                    consume(getTokenType(w),w);
+                    TokenType type = getTokenType(w);
+                    consume(type ,w);
                 }
         }
     } catch (const std::runtime_error& e) {
@@ -83,7 +88,8 @@ void Lexer::scanToken() {
     }
 }
 
-TokenType Lexer::getTokenType(const std::string &word) {
+TokenType Lexer::getTokenType(std::string &word) {
+    for(auto& c : word) c = toupper(c);
     if(word == "INSERT") return TokenType::INSERT;
     else if(word == "SEARCH") return TokenType::SEARCH;
     else if(word == "DELETE") return TokenType::DELETE;

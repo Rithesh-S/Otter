@@ -21,7 +21,7 @@ class Lexer {
         void consume(TokenType type, std::string word);
 
         std::string getString(char stop = ' ');
-        TokenType getTokenType(const std::string &word);
+        TokenType getTokenType(std::string &word);
         std::string tokenType(TokenType type);            //helper
 
     public:
