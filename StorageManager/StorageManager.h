@@ -1,12 +1,12 @@
 #pragma once
 
+#include <vector>
+#include <memory>
 #include <string>
 #include <sstream>
 #include <fstream>
-#include <memory>
 #include <iostream>
 #include <filesystem>
-#include <vector>
 #include "../Index/BTree/BTree.h"
 #include "../OFS/DataNode/DataNode.h"
 #include "../OFS/Buffer/Buffer.h"
@@ -46,11 +46,10 @@ class StorageManager {
         void loadMetaData();
         void saveMetaData();
 
-        std::string readRecord(uint32_t id);
-        void writeRecord(std::ifstream &file);
+        void deleteRecord(uint32_t id);
         void writeRecord(uint32_t id, std::string msg);
         void updateRecord(uint32_t id, std::string msg);
-        void deleteRecord(uint32_t id);
+        std::pair<std::string, std::string> readRecord(uint32_t id);
 
         void walFrameClearAndSave();
         uint32_t getCurrentBinIndex();

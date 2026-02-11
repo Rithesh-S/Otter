@@ -74,24 +74,24 @@ void StorageManager::loadMetaData() {
     }
 }
 
-std::string StorageManager::readRecord(uint32_t id) {
+std::pair<std::string, std::string> StorageManager::readRecord(uint32_t id) {
     if (buffer -> contains(id)) {
         auto data = buffer -> readData(id).getData();
-        return std::to_string(data.first) + " - " + data.second;
+        return { std::to_string(data.first), data.second };
     }
-
+    
     auto [file_id, offset] = tree -> search(id);
-    if (file_id == 0xFFFFFFFF) return "No Records Found";
-
+    if (file_id == 0xFFFFFFFF) return { "", "" };
+    
     auto file = getFileByIndex(file_id);
     DataNode dataNode;
-
+    
     file -> seekg(offset);
     if (file -> read(reinterpret_cast<char *>(&dataNode), sizeof(DataNode))) {
         auto data = dataNode.getData();
-        return std::to_string(data.first) + " - " + data.second;
+        return { std::to_string(data.first), data.second };
     }
-    return "No Records Found";
+    return { "", "" };
 }
 
 void StorageManager::overWriteRecord(uint32_t file_id, uint64_t offset, DataNode &node) {
@@ -99,35 +99,6 @@ void StorageManager::overWriteRecord(uint32_t file_id, uint64_t offset, DataNode
     file -> seekp(offset, std::ios::beg);
     file -> write(reinterpret_cast<const char *>(&node), sizeof(DataNode));
     file -> flush();
-}
-
-void StorageManager::writeRecord(std::ifstream &file) {
-    std::string line;
-    while (std::getline(file, line)) {
-        uint32_t id;
-        std::string temp_id, msg;
-        char buf[length] = {0};
-
-        std::stringstream ss(line);
-
-        if (std::getline(ss, temp_id, ',')) id = std::stoull(temp_id);
-        std::getline(ss, msg, ',');
-
-        if (msg.size() > length) std::cerr << "\033[33mWARNING: The data size exceeds " << length << ", hence excess length is truncated.\033[0m" << std::endl;
-
-        std::strncpy(buf, msg.c_str(), length);
-        DataNode dataNode = DataNode(id, buf);
-        wal -> writeWAL(dataNode);
-
-        if (buffer -> contains(id) || (tree -> search(id).file_id != 0xFFFFFFFF)) {
-            std::cerr << "\033[33mWARNING: Duplicate ID found, Hence Ignored.\033[0m" << std::endl;
-            continue;
-        }
-
-        buffer -> writeData(id, dataNode, sizeof(dataNode));
-
-        if (buffer -> isFull()) buffer -> flush();
-    }
 }
 
 void StorageManager::writeRecord(uint32_t id, std::string msg) {

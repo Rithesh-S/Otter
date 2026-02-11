@@ -12,7 +12,6 @@ void Parser::parse() {
     } catch(const std::runtime_error& e) {
         std::cerr << e.what() << std::endl;
     }
-    printAST(root.get());
 }
 
 std::unique_ptr<Expr> Parser::parseExpression() {
@@ -60,6 +59,8 @@ bool Parser::isAtEnd() { return currPos -> getTokenType() == TokenType::END_OF_F
 
 bool Parser::isMatch(TokenType type) { return peek() == type; }
 
+Expr* Parser::getRoot() { return root.get(); }
+
 void Parser::move() {
     if(isAtEnd()) return;
     currPos++;
@@ -69,38 +70,4 @@ std::string Parser::consume() {
     std::string data = currPos -> token();
     move();
     return data;
-}
-
-void Parser::printAST(Expr* node) {
-    if(!node) {
-        std::cout << "Empty Tree" << std::endl;
-        return;
-    }
-
-    if(Literal* literal = dynamic_cast<Literal*>(node)) {
-        std::cout << literal -> data << std::endl;
-        return;
-    }
-
-    if(Unary* unary = dynamic_cast<Unary*>(node)) {
-        std::cout << tokenType(unary -> type) << std::endl;
-        printAST(unary -> left.get());
-    }
-    
-    if(Binary* binary = dynamic_cast<Binary*>(node)) {
-        std::cout << tokenType(binary -> type) << std::endl;
-        printAST(binary -> left.get());
-        printAST(binary -> right.get());
-    }
-}
-
-std::string Parser::tokenType(TokenType type) {             //helper
-    if(type == TokenType::INSERT) return "INSERT";
-    else if(type == TokenType::SEARCH) return "SEARCH";
-    else if(type == TokenType::DELETE) return "DELETE";
-    else if(type == TokenType::UPDATE) return "UPDATE";
-    else if(type == TokenType::ID) return "ID";
-    else if(type == TokenType::DATA) return "DATA";
-    else if(type == TokenType::END_OF_FILE) return "EOF";
-    else return "";
 }

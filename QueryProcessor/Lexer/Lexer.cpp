@@ -29,25 +29,9 @@ std::string Lexer::getString(char stop) {
 }
 
 void Lexer::tokenize() {
-    while(!isAtEnd()) {
-        scanToken();
-    }
+    while(!isAtEnd()) scanToken();
     consume(TokenType::END_OF_FILE,"");
-    // for(auto i : tokens_) {
-    //     std::cout << tokenType(i.getTokenType()) << " " << i.token() << std::endl;
-    // }
     return;
-}
-
-std::string Lexer::tokenType(TokenType type) {             //helper
-    if(type == TokenType::INSERT) return "INSERT";
-    else if(type == TokenType::SEARCH) return "SEARCH";
-    else if(type == TokenType::DELETE) return "DELETE";
-    else if(type == TokenType::UPDATE) return "UPDATE";
-    else if(type == TokenType::ID) return "ID";
-    else if(type == TokenType::DATA) return "DATA";
-    else if(type == TokenType::END_OF_FILE) return "EOF";
-    else return "";
 }
 
 void Lexer::scanToken() {

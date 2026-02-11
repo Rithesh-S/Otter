@@ -38,65 +38,68 @@ void CLInterface::start() {
     }
 }
 
+void CLInterface::printFormat(std::pair<std::string, std::string> node, QueryType type) {
+    if(type == QueryType::SEARCH && node.first == "" && node.second == "") {
+        std::cout << "\033[33mNo Records Found!\033[0m" << std::endl;
+        return;
+    }
+
+    std::string id = node.first;
+    std::string msg = node.second;
+
+    switch (type) {
+        case QueryType::INSERT:
+            std::cout << "\033[32mOK. Record " << id << " inserted.\033[0m" << std::endl;
+            return;
+        case QueryType::UPDATE:
+            std::cout << "\033[32mOK. Record " << id << " updated.\033[0m" << std::endl;
+            return;
+        case QueryType::DELETE:
+            std::cout << "\033[32mOK. Record " << id << " deleted.\033[0m" << std::endl;
+            return;
+        case QueryType::SEARCH:
+            break;
+        default:
+            return;
+    }
+
+    const int idWidth = 10;
+    const int msgWidth = 124;
+
+    auto printLine = [&]() {
+        std::cout << "+" << std::string(idWidth + 2, '-') 
+                  << "+" << std::string(msgWidth + 2, '-') << "+\n";
+    };
+
+    printLine();
+    std::cout << "| " << std::left << std::setw(idWidth) << "ID" 
+              << " | " << std::left << std::setw(msgWidth) << "DATA CONTENT" << " |\n";
+    
+    printLine();
+    std::cout << "| " << std::left << std::setw(idWidth) << id 
+              << " | " << std::left << std::setw(msgWidth) << msg << " |\n";
+
+    printLine();
+    std::cout << std::endl;
+}
+
 void CLInterface::processCommand(std::string &cmd) {
     std::string upperCmd = cmd;
     for (auto& c : upperCmd) c = toupper(c);
 
-    if (upperCmd == "EXIT" || upperCmd == "QUIT") {
+    if (upperCmd == "EXIT" || upperCmd == "EXIT;") {
         std::cout << "\033[32mSUCCESS: Shutting Down Gracefully...\033[0m" << std::endl;
         running = false;
     }
-    else if (upperCmd == "HELP") printHelp();
+    else if (upperCmd == "HELP" || upperCmd == "HELP;") printHelp();
     else {
         Lexer lexer(cmd);
         lexer.tokenize();
+
         Parser parser(lexer.getTokens());
         parser.parse();
+
+        Executor executor(parser.getRoot(), sm, this);
+        executor.execute();
     }
-
-
-    // else if (command == "INSERT") {
-    //     uint32_t id;
-    //     if (!(ss >> id)) {
-    //         std::cout << "Usage: INSERT <id> <message>" << std::endl;
-    //         return;
-    //     }
-
-    //     std::string msg;
-    //     std::getline(ss >> std::ws, msg); 
-
-    //     if (!msg.empty() && (msg.front() == '"' || msg.front() == '\'')) {
-    //         msg.erase(0, 1);
-    //         if (!msg.empty() && (msg.back() == '"' || msg.back() == '\'')) msg.pop_back();
-    //     }
-        
-    //     sm->writeRecord(id, msg);
-    //     std::cout << "OK. Record " << id << " inserted." << std::endl;
-    // } else if (command == "SEARCH") {
-    //     uint32_t id;
-    //     if (ss >> id) std::cout << sm->readRecord(id) << std::endl;
-    // } else if (command == "DELETE") {
-    //     uint32_t id;
-    //     if (ss >> id) {
-    //         sm->deleteRecord(id);
-    //         std::cout << "OK. Record " << id << " deleted." << std::endl;
-    //     }
-    // } else if (command == "UPDATE") {
-    //     uint32_t id;
-    //     if (!(ss >> id)) {
-    //         std::cout << "Usage: UPDATE <id> <message>" << std::endl;
-    //         return;
-    //     }
-
-    //     std::string msg;
-    //     std::getline(ss >> std::ws, msg); 
-
-    //     if (!msg.empty() && (msg.front() == '"' || msg.front() == '\'')) {
-    //         msg.erase(0, 1);
-    //         if (!msg.empty() && (msg.back() == '"' || msg.back() == '\'')) msg.pop_back();
-    //     }
-
-    //     sm->updateRecord(id, msg);
-    //     std::cout << "OK. Record " << id << " updated." << std::endl;
-    // } else std::cout << "\033[31mERROR: Unknown command '" << command << "'\033[0m" << std::endl;
 }

@@ -2,9 +2,13 @@
 
 #include <string>
 #include <cstdint>
+#include <iomanip>
 #include <iostream>
+#include "../OFS/DataNode/DataNode.h"
 #include "../QueryProcessor/Lexer/Lexer.h"
 #include "../QueryProcessor/Parser/Parser.h"
+#include "../QueryProcessor/Executor/Executor.h"
+#include "../QueryProcessor/Executor/data/QueryPlan.h"
 
 class StorageManager;
 
@@ -22,4 +26,5 @@ class CLInterface {
         ~CLInterface() = default;
 
         void start();
+        void printFormat(std::pair<std::string, std::string> node, QueryType type);
 };

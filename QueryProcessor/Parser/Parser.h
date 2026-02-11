@@ -15,17 +15,17 @@ class Parser {
         std::unique_ptr<Expr> parseExpression() ;
         std::unique_ptr<Expr> parseLeft();
         std::unique_ptr<Expr> parseRight();
+
         void move();
-        bool isMatch(TokenType type);
-        TokenType peek();
         bool isAtEnd();
+        TokenType peek();
         std::string consume();
-        void printAST(Expr* node);
-        std::string tokenType(TokenType type);
+        bool isMatch(TokenType type);
 
     public:
         Parser(std::vector<Token> tokens);
         ~Parser() = default;
 
         void parse();
+        Expr* getRoot();
 };

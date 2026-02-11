@@ -27,8 +27,7 @@ void enableVirtualTerminal() {
 int main(int argc, char* argv[]) {
     enableVirtualTerminal();
     if (argc == 1) {
-        // std::string cmd = "start cmd /c " + std::string(argv[0]) + " --cli"; // closes
-        std::string cmd = "start cmd /k " + std::string(argv[0]) + " --cli";    // keeps open
+        std::string cmd = "start cmd /c " + std::string(argv[0]) + " --cli";
         system(cmd.c_str());
         return 0;
     }
