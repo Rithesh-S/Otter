@@ -10,6 +10,7 @@ class DataNode {
 
     private:
         static const uint8_t tot_space = 124;
+        
         uint32_t id;
         char data[tot_space] = {0};
         

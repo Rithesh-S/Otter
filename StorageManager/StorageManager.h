@@ -24,15 +24,15 @@ class StorageManager {
         const std::string basepath = "OFS";
         const std::string basepathTree = "Index";
         const std::string basepathSM = "StorageManager";
-        const std::string metaDataPath = basepath + "/Buffer/config/metadata.conf";
         const std::string treeIndexPath = basepathTree + "/bin/index.bin";
         const std::string walBinPath = basepath + "/WAL/bin/WALFrame.bin";
+        const std::string metaDataPath = basepath + "/Buffer/config/metadata.conf";
         const std::string iQueueBinPath = basepathSM + "/InsertionQueue/bin/DQueue.bin";
 
-        static std::unique_ptr<BTree> tree;
-        static std::unique_ptr<Buffer> buffer;
         static std::unique_ptr<WAL> wal;
+        static std::unique_ptr<BTree> tree;
         static std::unique_ptr<LRU> lruCache;
+        static std::unique_ptr<Buffer> buffer;
         static std::unique_ptr<InsertionQueue> iQueue;
         static std::unique_ptr<Transaction> transaction;
 
@@ -52,13 +52,15 @@ class StorageManager {
         std::pair<std::string, std::string> readRecord(uint32_t id);
 
         void walFrameClearAndSave();
-        uint32_t getCurrentBinIndex();
-        uint32_t getNewIndexForBinFlush();
+        
         std::string getWALBinPath();
         std::string getBTreeIndexPath();
         std::string getInsertionQueueBinPath();
-        std::string getFilePathByIndex(uint32_t index);
+        
+        uint32_t getCurrentBinIndex();
+        uint32_t getNewIndexForBinFlush();
         std::fstream* getFileByIndex(uint32_t index);
+        std::string getFilePathByIndex(uint32_t index);
         std::pair<RecordPointer, std::fstream*> getInsertionPosAndFile();
 
         friend class WAL;

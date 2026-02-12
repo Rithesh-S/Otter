@@ -12,14 +12,15 @@ class StorageManager;
 
 class LRU {
     private:
+        size_t size;
         std::list<Cache> lruList;
         std::unordered_map<uint32_t, std::list<Cache>::iterator> lruMap;
-        size_t size;
 
         StorageManager* sm;
 
     public:
         LRU(StorageManager* sm, size_t size);
         ~LRU();
+
         std::fstream* getFileFromLRU(uint32_t file_id);
 };

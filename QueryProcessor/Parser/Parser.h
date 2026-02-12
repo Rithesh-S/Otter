@@ -12,9 +12,9 @@ class Parser {
         std::unique_ptr<Expr> root = nullptr;
         std::vector<Token>::iterator currPos = tokens.begin();
 
-        std::unique_ptr<Expr> parseExpression() ;
         std::unique_ptr<Expr> parseLeft();
         std::unique_ptr<Expr> parseRight();
+        std::unique_ptr<Expr> parseExpression();
 
         void move();
         bool isAtEnd();

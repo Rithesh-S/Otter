@@ -17,7 +17,7 @@ void Executor::execute() {
 void Executor::createPlan(Expr* node) {
     if(!node) {
         plan.get() -> success = false;
-        plan.get() -> errorMsg = "AST Build Failed!";
+        plan.get() -> errorMsg = "\033[31mERROR: Build Failed!.\033[0m";
         return;
     }
 

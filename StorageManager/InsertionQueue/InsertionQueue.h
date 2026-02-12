@@ -13,15 +13,17 @@ class InsertionQueue {
         static const size_t dataNodeSize = 128;
         static std::queue<RecordPointer> insertionQueue;
 
-        StorageManager* storageManager;
         std::fstream file;
-        void refillQueue(uint32_t file_id);
+        StorageManager* storageManager;
+
         void loadBinData();
         void saveBinData();
+        void refillQueue(uint32_t file_id);
 
     public:
         InsertionQueue(StorageManager* sm, std::string binPath);
         ~InsertionQueue();
+        
         RecordPointer getRecordPointer();
         void putRecordPointer(RecordPointer rp);
 };

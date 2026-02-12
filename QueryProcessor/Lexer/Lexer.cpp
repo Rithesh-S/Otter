@@ -17,21 +17,40 @@ void Lexer::move() {
     currPos_++; 
 }
 
+void Lexer::tokenize() {
+    while(!isAtEnd()) scanToken();
+    consume(TokenType::END_OF_FILE,"");
+    return;
+}
+
+std::string Lexer::getString(std::function<bool(char)> stop) {
+    std::string word = "";
+    while(!isAtEnd() && stop(peek()) && peek() != ';') {
+        word += peek();
+        move();
+    }
+    return word;
+}
+
 std::string Lexer::getString(char stop) {
     std::string word = "";
     while(!isAtEnd() && peek() != stop && peek() != ';') {
         word += peek();
         move();
     }
-    if(peek() != stop && stop == '\'') throw std::runtime_error(std::string("\033[31mERROR: Expected '") + stop + "'.\033[0m");
-    if(isAtEnd()) throw std::runtime_error(std::string("\033[31mERROR: Expected '") + stop + "'.\033[0m");
+    if(peek() != stop) throw std::runtime_error(std::string("\033[31mERROR: Expected ' ") + stop + " '.\033[0m");
+    if(isAtEnd()) throw std::runtime_error(std::string("\033[31mERROR: Expected ' ") + stop + " '.\033[0m");
     return word;
 }
 
-void Lexer::tokenize() {
-    while(!isAtEnd()) scanToken();
-    consume(TokenType::END_OF_FILE,"");
-    return;
+
+TokenType Lexer::getTokenType(std::string &word) {
+    for(auto& c : word) c = toupper(c);
+    if(word == "INSERT") return TokenType::INSERT;
+    else if(word == "SEARCH") return TokenType::SEARCH;
+    else if(word == "DELETE") return TokenType::DELETE;
+    else if(word == "UPDATE") return TokenType::UPDATE;
+    else throw std::runtime_error(std::string("\033[31mERROR: Unexpected token ") + word + ".\033[0m");
 }
 
 void Lexer::scanToken() {
@@ -59,9 +78,9 @@ void Lexer::scanToken() {
                 break;
 
             default:
-                if(isDigit(peek())) consume(TokenType::ID,getString(' '));
+                if(isdigit(peek())) consume(TokenType::ID,getString(isdigit));
                 else { 
-                    w = getString(' ');
+                    w = getString(isalpha);
                     TokenType type = getTokenType(w);
                     consume(type ,w);
                 }
@@ -70,15 +89,6 @@ void Lexer::scanToken() {
         std::cerr << e.what() << std::endl;
         return;
     }
-}
-
-TokenType Lexer::getTokenType(std::string &word) {
-    for(auto& c : word) c = toupper(c);
-    if(word == "INSERT") return TokenType::INSERT;
-    else if(word == "SEARCH") return TokenType::SEARCH;
-    else if(word == "DELETE") return TokenType::DELETE;
-    else if(word == "UPDATE") return TokenType::UPDATE;
-    else throw std::runtime_error(std::string("\033[31mERROR: Unexpected token ") + word + ".\033[0m");
 }
 
 

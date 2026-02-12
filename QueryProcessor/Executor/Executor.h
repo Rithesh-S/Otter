@@ -15,8 +15,8 @@ class Executor {
         CLInterface* cli = nullptr;
         std::unique_ptr<QueryPlan> plan = nullptr;
 
-        void createPlan(Expr* node);
         void executePlan();
+        void createPlan(Expr* node);
 
     public:
         Executor(Expr* root, StorageManager* sm, CLInterface* cli);

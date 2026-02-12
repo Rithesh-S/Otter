@@ -3,8 +3,9 @@
 #include <string>
 #include <vector>
 #include <cstdint>
-#include <iostream>
 #include <sstream>
+#include <iostream>
+#include <functional>
 #include "./Token/Token.h"
 
 class Lexer {
@@ -20,8 +21,9 @@ class Lexer {
         bool isDigit(char ch);
         void consume(TokenType type, std::string word);
 
-        std::string getString(char stop = ' ');
+        std::string getString(char stop);
         TokenType getTokenType(std::string &word);
+        std::string getString(std::function<bool(char)> stop);
 
     public:
         Lexer(const std::string &query);
@@ -29,5 +31,4 @@ class Lexer {
 
         void tokenize();
         std::vector<Token> getTokens();
-        
 };

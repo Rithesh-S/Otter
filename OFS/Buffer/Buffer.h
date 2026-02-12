@@ -15,11 +15,13 @@ class Transaction;
 class Buffer {
     private:
         static const uint16_t max_bytes = 1024;
-        std::map<uint32_t, DataNode> records;
+
         size_t used_bytes = 0;
-        StorageManager* storageManager;
-        Transaction* transactionRef;
+        std::map<uint32_t, DataNode> records;
+
         BTree* treeRef;
+        Transaction* transactionRef;
+        StorageManager* storageManager;
 
         bool saveTheNodesIntoBin(std::map<uint32_t, DataNode>& records);
 
@@ -27,11 +29,12 @@ class Buffer {
         Buffer(StorageManager* storageManager, BTree* treeRef, Transaction* transactionRef);
         ~Buffer() = default;
 
-        void writeData(uint32_t id, DataNode& record, size_t size);
         void flush();
         bool isFull();
-        std::map<uint32_t, DataNode> readData();
-        DataNode readData(uint32_t id);
         bool contains(uint32_t id);
+
         void removeData(uint32_t id);
+        DataNode readData(uint32_t id);
+        std::map<uint32_t, DataNode> readData();
+        void writeData(uint32_t id, DataNode& record, size_t size);
 };

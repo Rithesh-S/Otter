@@ -13,7 +13,6 @@ class Transaction {
         ~Transaction() = default;
 
         bool begin();
-        bool isFailed();
         void commit();
-
+        bool isFailed();
 };

@@ -28,7 +28,7 @@ std::unique_ptr<Expr> Parser::parseExpression() {
             auto left = parseLeft();
             return std::move(std::make_unique<Unary>(std::move(left), data));
         } else {
-            throw std::runtime_error("\033[31mERROR: Unexpected token.\033[0m");
+            throw std::runtime_error("\033[31mERROR: Invalid Syntax.\033[0m");
         }
     } catch(...) { throw; }
 }
@@ -39,7 +39,7 @@ std::unique_ptr<Expr> Parser::parseLeft() {
         std::string data = consume();
         return std::move(std::make_unique<Literal>(type, data));
     } else {
-        throw std::runtime_error("\033[31mERROR: Unexpected token.\033[0m");
+        throw std::runtime_error("\033[31mERROR: Invalid Syntax.\033[0m");
     }
 }
 
@@ -49,7 +49,7 @@ std::unique_ptr<Expr> Parser::parseRight() {
         std::string data = consume();
         return std::move(std::make_unique<Literal>(type, data));
     } else {
-        throw std::runtime_error("\033[31mERROR: Unexpected token.\033[0m");
+        throw std::runtime_error("\033[31mERROR: Invalid Syntax.\033[0m");
     }
 }
 

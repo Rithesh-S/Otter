@@ -16,19 +16,20 @@ class WAL {
         static const uint16_t magic = 0xACE;
         static const uint8_t nodeSize = 128;
         static const uint32_t key = 0xEDB88320;
+        static std::unique_ptr<WALFrame> walFrame;
+
         uint32_t crc32_table[256] = {0};
         
-        static std::unique_ptr<WALFrame> walFrame;
         std::fstream file;
-        StorageManager* storageManager;
-        Transaction* transactionRef;
         Buffer* bufferRef;
+        Transaction* transactionRef;
+        StorageManager* storageManager;
         
+        bool verifyCRC();
         void generateCRC32Table();
         void saveNodesIntoWALBin();
-        uint32_t generateCRC(const void* data, size_t length);
-        bool verifyCRC();
         std::vector<DataNode> readWAL();
+        uint32_t generateCRC(const void* data, size_t length);
         
     public:
         WAL(StorageManager* sm, Buffer* bufferRef, Transaction* transactionRef, std::string binPath);
