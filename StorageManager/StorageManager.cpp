@@ -101,51 +101,73 @@ void StorageManager::overWriteRecord(uint32_t file_id, uint64_t offset, DataNode
     file -> flush();
 }
 
-void StorageManager::writeRecord(uint32_t id, std::string msg) {
+bool StorageManager::writeRecord(uint32_t id, std::string msg) {
     char buf[length] = {0};
 
     if (msg.size() > length)  std::cerr << "\033[33mWARNING: The data size exceeds " << length << ", hence excess length is truncated.\033[0m" << std::endl;
 
     std::strncpy(buf, msg.c_str(), length);
     DataNode dataNode = DataNode(id, buf);
-    wal -> writeWAL(dataNode);
-
+    
     if (buffer -> contains(id) || (tree -> search(id).file_id != 0xFFFFFFFF)) {
         std::cerr << "\033[33mWARNING: Duplicate ID found, Hence Ignored.\033[0m" << std::endl;
-        return;
+        return false;
     }
+
+    wal -> writeWAL(dataNode);
     buffer -> writeData(id, dataNode, sizeof(dataNode));
     if (buffer -> isFull()) buffer -> flush();
+    return true;
 }
 
 void StorageManager::writeRecord(std::vector<DataNode> walBuf) {
+    char data[124] = {0};
     for (auto &node : walBuf) {
         uint32_t id = node.getData().first;
+        if(node.getData().second == data) {
+            buffer -> removeData(id);
+            continue;
+        } 
         buffer -> writeData(id, node, sizeof(node));
     }
 }
 
-void StorageManager::updateRecord(uint32_t id, std::string msg) {
+bool StorageManager::updateRecord(uint32_t id, std::string msg) {
     char buf[length] = {0};
 
     if (msg.size() > length) std::cerr << "\033[33mWARNING: The data size exceeds " << length << ", hence excess length is truncated.\033[0m" << std::endl;
 
     std::strncpy(buf, msg.c_str(), length);
     DataNode dataNode = DataNode(id, buf);
-    wal -> writeWAL(dataNode);
-
-    if (buffer -> contains(id)) buffer -> writeData(id, dataNode, sizeof(dataNode));
-    else {
+    
+    if (buffer -> contains(id)) {
+        wal -> writeWAL(dataNode);
+        buffer -> writeData(id, dataNode, sizeof(dataNode));
+        return true;
+    } else {
         auto [file_id, offset] = tree -> search(id);
-        if (file_id != 0xFFFFFFFF) overWriteRecord(file_id, offset, dataNode);
-        else std::cerr << "\033[33mWARNING: ID not found!\033[0m" << std::endl;
+        if (file_id != 0xFFFFFFFF) {
+            wal -> writeWAL(dataNode);
+            overWriteRecord(file_id, offset, dataNode);
+            return true;
+        } else {
+            std::cerr << "\033[33mWARNING: ID not found!\033[0m" << std::endl;
+            return false;
+        }
     }
 }
 
-void StorageManager::deleteRecord(uint32_t id) {
-    if(buffer -> contains(id)) buffer -> removeData(id);
-    else if(tree -> search(id).file_id != 0xFFFFFFFF) {
+bool StorageManager::deleteRecord(uint32_t id) {
+    if(buffer -> contains(id)) {
+        DataNode node(id);
+        wal -> writeWAL(node);
+        buffer -> removeData(id);
+    } else if(tree -> search(id).file_id != 0xFFFFFFFF) {
         RecordPointer rp = tree -> markAsDeleted(id);
         iQueue -> putRecordPointer(rp);
-    } else std::cerr << "\033[33mWARNING: ID not found!\033[0m" << std::endl;
+    } else {
+        std::cerr << "\033[33mWARNING: ID not found!\033[0m" << std::endl;
+        return false;
+    }
+    return true;
 }

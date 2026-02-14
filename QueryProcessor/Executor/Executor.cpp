@@ -47,21 +47,21 @@ void Executor::executePlan() {
         switch (plan.get() -> type) {
             case QueryType::INSERT:
                 id = std::to_string(plan.get() -> id);
-                sm -> writeRecord(plan.get() -> id, plan.get() -> data);
-                cli -> printFormat({ id, "" }, QueryType::INSERT);
+                if(sm -> writeRecord(plan.get() -> id, plan.get() -> data))
+                    cli -> printFormat({ id, "" }, QueryType::INSERT);
                 break;
             case QueryType::UPDATE:
                 id = std::to_string(plan.get() -> id);
-                sm -> updateRecord(plan.get() -> id, plan.get() -> data);
-                cli -> printFormat({ id, "" }, QueryType::UPDATE);
+                if(sm -> updateRecord(plan.get() -> id, plan.get() -> data))
+                    cli -> printFormat({ id, "" }, QueryType::UPDATE);
                 break;
             case QueryType::SEARCH:
                 cli -> printFormat(sm -> readRecord(plan.get() -> id), QueryType::SEARCH);
                 break;
             case QueryType::DELETE:
                 id = std::to_string(plan.get() -> id);
-                sm -> deleteRecord(plan.get() -> id);
-                cli -> printFormat({ id, "" }, QueryType::DELETE);
+                if(sm -> deleteRecord(plan.get() -> id));
+                    cli -> printFormat({ id, "" }, QueryType::DELETE);
                 break;
             default:
                 throw std::runtime_error("\033[31mERROR: Unexpected Query.\033[0m");

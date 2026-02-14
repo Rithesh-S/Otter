@@ -46,9 +46,9 @@ class StorageManager {
         void loadMetaData();
         void saveMetaData();
 
-        void deleteRecord(uint32_t id);
-        void writeRecord(uint32_t id, std::string msg);
-        void updateRecord(uint32_t id, std::string msg);
+        bool deleteRecord(uint32_t id);
+        bool writeRecord(uint32_t id, std::string msg);
+        bool updateRecord(uint32_t id, std::string msg);
         std::pair<std::string, std::string> readRecord(uint32_t id);
 
         void walFrameClearAndSave();

@@ -5,6 +5,8 @@ DataNode::DataNode(uint32_t id, char (&d) [tot_space]) : id(id) {
     data[tot_space - 1] = '\0';
 }
 
+DataNode::DataNode(uint32_t id) : id(id) {}
+
 std::pair<uint32_t,std::string> DataNode::getData() {
     return { id, data };
 }

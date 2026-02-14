@@ -18,6 +18,7 @@ class DataNode {
         DataNode() = default;
         ~DataNode() = default;
         
+        DataNode(uint32_t id);
         DataNode(uint32_t id, char (&d) [tot_space]);
 
         std::pair<uint32_t, std::string> getData();
