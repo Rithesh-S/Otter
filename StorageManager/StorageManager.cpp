@@ -1,17 +1,12 @@
 #include "StorageManager.h"
 
-uint32_t StorageManager::index = 0xFFFFFFFF;
 const size_t StorageManager::cacheSize = 50;
 const uint8_t StorageManager::length = 124;
 
-std::unique_ptr<BTree> StorageManager::tree = nullptr;
-std::unique_ptr<Buffer> StorageManager::buffer = nullptr;
-std::unique_ptr<WAL> StorageManager::wal = nullptr;
-std::unique_ptr<LRU> StorageManager::lruCache = nullptr;
-std::unique_ptr<InsertionQueue> StorageManager::iQueue = nullptr;
-std::unique_ptr<Transaction> StorageManager::transaction = nullptr;
-
-StorageManager::~StorageManager() { saveMetaData(); }
+StorageManager::~StorageManager() { 
+    saveMetaData();
+    metaFile.close();
+}
 
 StorageManager::StorageManager() { 
     loadMetaData();
@@ -21,9 +16,9 @@ StorageManager::StorageManager() {
     if (wal == nullptr) wal = std::make_unique<WAL>(this, buffer.get(), transaction.get(), walBinPath);
     if (lruCache == nullptr) lruCache = std::make_unique<LRU>(this, cacheSize);
     if (iQueue == nullptr) iQueue = std::make_unique<InsertionQueue>(this, iQueueBinPath);
-
-    wal -> loadWALData();
 }
+
+void StorageManager::recover() { wal -> loadWALData(); }
 
 std::string StorageManager::getBTreeIndexPath() { return treeIndexPath; }
 
@@ -55,20 +50,32 @@ uint32_t StorageManager::getNewIndexForBinFlush() {
 }
 
 void StorageManager::saveMetaData() {
-    std::ofstream outFile(metaDataPath, std::ios::trunc);
-    if (outFile.is_open()) {
-        outFile << index;
-        outFile.flush();
-        outFile.close();
+    if (metaFile.is_open()) {
+        metaFile.clear();
+        metaFile.seekp(0, std::ios::beg);
+        
+        metaFile.write(reinterpret_cast<const char*>(&index), sizeof(index));
+        metaFile.flush();
     }
 }
 
 void StorageManager::loadMetaData() {
-    std::ifstream inFile(metaDataPath);
-    if (inFile.is_open()) {
-        inFile >> index;
-        inFile.close();
-    } else {
+    metaFile.open(metaDataPath, std::ios::binary | std::ios::in | std::ios::out);
+    if(!metaFile.is_open()) {
+        std::ofstream creator(metaDataPath, std::ios::binary);
+        if(!creator) return;
+        creator.close();
+
+        metaFile.open(metaDataPath, std::ios::binary | std::ios::in | std::ios::out);
+        index = 0xFFFFFFFF;
+        saveMetaData();
+    }
+
+    metaFile.clear();
+    metaFile.seekg(0, std::ios::beg);
+    metaFile.read(reinterpret_cast<char*>(&index), sizeof(index));
+
+    if (metaFile.gcount() < sizeof(index)) {
         index = 0xFFFFFFFF;
         saveMetaData();
     }
@@ -86,6 +93,7 @@ std::pair<std::string, std::string> StorageManager::readRecord(uint32_t id) {
     auto file = getFileByIndex(file_id);
     DataNode dataNode;
     
+    file -> clear();
     file -> seekg(offset);
     if (file -> read(reinterpret_cast<char *>(&dataNode), sizeof(DataNode))) {
         auto data = dataNode.getData();
@@ -96,6 +104,7 @@ std::pair<std::string, std::string> StorageManager::readRecord(uint32_t id) {
 
 void StorageManager::overWriteRecord(uint32_t file_id, uint64_t offset, DataNode &node) {
     auto file = getFileByIndex(file_id);
+    file -> clear();
     file -> seekp(offset, std::ios::beg);
     file -> write(reinterpret_cast<const char *>(&node), sizeof(DataNode));
     file -> flush();

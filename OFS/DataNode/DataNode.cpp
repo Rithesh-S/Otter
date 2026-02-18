@@ -1,12 +1,21 @@
 #include "DataNode.h"
 
-DataNode::DataNode(uint32_t id, char (&d) [tot_space]) : id(id) {
-    for (size_t i = 0; i < tot_space - 1; i++) data[i] = d[i];
-    data[tot_space - 1] = '\0';
+DataNode::DataNode() { std::memset(data, 0, TOT_SPACE); }
+
+DataNode::DataNode(uint32_t id, char (&d) [TOT_SPACE]) : id(id) {
+    std::memset(data, 0, TOT_SPACE);
+    std::memcpy(data, d, TOT_SPACE);
 }
 
-DataNode::DataNode(uint32_t id) : id(id) {}
+DataNode::DataNode(uint32_t id) : id(id) {
+    std::memset(data, 0, TOT_SPACE);
+}
 
 std::pair<uint32_t,std::string> DataNode::getData() {
-    return { id, data };
+    size_t actualLength = 0;
+    while (actualLength < TOT_SPACE && data[actualLength] != '\0') {
+        actualLength++;
+    }
+
+    return { id, std::string(data, actualLength) };
 }

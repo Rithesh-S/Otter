@@ -3,11 +3,9 @@
 #include "../../TransactionManager/Transaction.h"
 #include "../Buffer/Buffer.h"
 
-std::unique_ptr<WALFrame> WAL::walFrame = nullptr;
-
 WAL::WAL(StorageManager* sm, Buffer* bufferRef, Transaction* transactionRef ,std::string binPath) :
     storageManager(sm), transactionRef(transactionRef), bufferRef(bufferRef) {
-    walFrame = std::make_unique<WALFrame>();
+    if(walFrame == nullptr) walFrame = std::make_unique<WALFrame>();
     file.open(binPath, std::ios::binary | std::ios::in | std::ios::out);
     
     if(!file.is_open()) {
@@ -49,7 +47,7 @@ void WAL::loadWALData() {
 }
 
 void WAL::saveNodesIntoWALBin() { 
-    file.seekg(0, std::ios::beg);
+    file.seekp(0, std::ios::beg);
     file.write(reinterpret_cast<const char*>(walFrame.get()), sizeof(WALFrame)); 
     file.flush();
 }
@@ -75,7 +73,7 @@ void WAL::writeWAL(DataNode& node) {
     walFrame -> crc = generateCRC(walFrame -> node, walFrame -> record_count * nodeSize);
     saveNodesIntoWALBin();
     
-    if(walFrame -> record_count > 8) bufferRef -> flush();
+    if(walFrame -> record_count >= 8) bufferRef -> flush();
 }
 
 std::vector<DataNode> WAL::readWAL() {

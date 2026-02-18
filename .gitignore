@@ -3,6 +3,7 @@
 #exe file
 output/*
 !output/.gitkeep
+db_bench.exe
 
 #chunk file
 OFS/Buffer/bin/*

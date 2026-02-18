@@ -14,7 +14,7 @@ class Transaction;
 
 class Buffer {
     private:
-        static const uint16_t max_bytes = 1024;
+        static const uint16_t MAX_BYTES = 1024;
 
         size_t used_bytes = 0;
         std::map<uint32_t, DataNode> records;

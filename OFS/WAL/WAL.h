@@ -16,14 +16,14 @@ class WAL {
         static const uint16_t magic = 0xACE;
         static const uint8_t nodeSize = 128;
         static const uint32_t key = 0xEDB88320;
-        static std::unique_ptr<WALFrame> walFrame;
-
+        
         uint32_t crc32_table[256] = {0};
         
         std::fstream file;
         Buffer* bufferRef;
         Transaction* transactionRef;
         StorageManager* storageManager;
+        std::unique_ptr<WALFrame> walFrame;
         
         bool verifyCRC();
         void generateCRC32Table();

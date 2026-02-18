@@ -17,9 +17,10 @@
 
 class StorageManager {
     private:
-        static uint32_t index;
+        uint32_t index;
         static const uint8_t length;
         static const size_t cacheSize;
+        std::fstream metaFile;
 
         const std::string basepath = "OFS";
         const std::string basepathTree = "Index";
@@ -29,12 +30,12 @@ class StorageManager {
         const std::string metaDataPath = basepath + "/Buffer/config/metadata.conf";
         const std::string iQueueBinPath = basepathSM + "/InsertionQueue/bin/DQueue.bin";
 
-        static std::unique_ptr<WAL> wal;
-        static std::unique_ptr<BTree> tree;
-        static std::unique_ptr<LRU> lruCache;
-        static std::unique_ptr<Buffer> buffer;
-        static std::unique_ptr<InsertionQueue> iQueue;
-        static std::unique_ptr<Transaction> transaction;
+        std::unique_ptr<WAL> wal;
+        std::unique_ptr<BTree> tree;
+        std::unique_ptr<LRU> lruCache;
+        std::unique_ptr<Buffer> buffer;
+        std::unique_ptr<InsertionQueue> iQueue;
+        std::unique_ptr<Transaction> transaction;
 
         void writeRecord(std::vector<DataNode> walBuf);
         void overWriteRecord(uint32_t file_id, uint64_t offset, DataNode &node);
@@ -52,6 +53,7 @@ class StorageManager {
         std::pair<std::string, std::string> readRecord(uint32_t id);
 
         void walFrameClearAndSave();
+        void recover();
         
         std::string getWALBinPath();
         std::string getBTreeIndexPath();

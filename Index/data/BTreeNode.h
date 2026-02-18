@@ -20,9 +20,9 @@ struct BTNode {
 
 
     BTNode() {
+        std::memset(this, 0, sizeof(BTNode));
         n = 0;
         is_leaf = true;
-        std::memset(this, 0, sizeof(BTNode));
     }
     ~BTNode() = default;
 };
