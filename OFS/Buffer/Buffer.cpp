@@ -7,56 +7,52 @@ Buffer::Buffer(StorageManager *storageManager, BTree *treeRef, Transaction* tran
     storageManager(storageManager), treeRef(treeRef), transactionRef(transactionRef) {
         records.reserve(VEC_SIZE);
     }
-
+    
 std::vector<DataNode> Buffer::readData() { return records; }
-
-void Buffer::removeData(uint32_t id) { 
-    auto it = std::find_if(records.begin(), records.end(), [id](const DataNode& node){
-        return node.getId() == id;
-    });
-
-    if(it != records.end()) {
-        *it = std::move(records.back());
-        records.pop_back();
-    }
-}
-
-DataNode Buffer::readData(uint32_t id) { 
-    auto it = std::find_if(records.begin(), records.end(), [id](const DataNode& node){
-        return node.getId() == id;
-    });
-
-    return it != records.end() ? *it : DataNode();
- }
 
 bool Buffer::isFull() { return used_bytes == MAX_BYTES; }
 
-bool Buffer::contains(uint32_t id) { 
-    auto it = std::find_if(records.begin(), records.end(), [id](const DataNode& node){
-        return node.getId() == id;
-    });
-    return it != records.end(); 
+bool Buffer::contains(uint32_t id) { return indexMap.find(id) != indexMap.end(); }
+
+void Buffer::removeData(uint32_t id) { 
+    auto it = indexMap.find(id);
+    if(it == indexMap.end()) return;
+
+    size_t indexToBeDeleted = it -> second;
+    
+    if (indexToBeDeleted < records.size() - 1) {
+        uint32_t lastElementId = records.back().getId();
+        records[indexToBeDeleted] = std::move(records.back());
+        indexMap[lastElementId] = indexToBeDeleted;
+    }
+    
+    records.pop_back();
+    indexMap.erase(it);
+}
+
+DataNode Buffer::readData(uint32_t id) { 
+    auto it = indexMap.find(id);
+    if(it != indexMap.end()) return records[it->second];
+    return DataNode();
 }
     
 void Buffer::writeData(DataNode &record) {
     size_t size = sizeof(DataNode);
     uint32_t id = record.getId();
 
-    if (used_bytes + size > MAX_BYTES) return;
-    
-    auto it = std::find_if(records.begin(), records.end(), [id](const DataNode& node) {
-        return node.getId() == id;
-    });
-    if(it != records.end()) *it = std::move(record);
-    else records.emplace_back(record);
-
-    used_bytes += size;
+    if(contains(id)) {
+        records[indexMap[id]] = std::move(record);
+    } else {
+        if (used_bytes + size > MAX_BYTES) return;
+        indexMap[id] = records.size();
+        records.emplace_back(std::move(record));
+        used_bytes += size;
+    }
 }
 
 void Buffer::writeRecordsFromWal(std::vector<DataNode> walBuf) {
     for (auto &node : walBuf) {
         uint32_t id = node.getId();
-        
         if(node.isEmpty()) removeData(id);
         else writeData(node);
     }
@@ -69,13 +65,15 @@ void Buffer::flush() {
 
     std::vector<DataNode> snapshot;
     snapshot.swap(records); 
+    indexMap.clear();
     used_bytes = 0;
 
     if (saveTheNodesIntoBin(snapshot)) {
         storageManager -> walFrameClearAndSave();
     } else {
-        records.insert(records.end(), snapshot.begin(), snapshot.end());
-        used_bytes = records.size() * 128;
+        for(size_t i = 0; i < snapshot.size(); ++i) indexMap[snapshot[i].getId()] = i;
+        records = std::move(snapshot);
+        used_bytes = records.size() * sizeof(DataNode);
     }
     isAlreadyFlushing = false;
 }

@@ -1,16 +1,12 @@
 #pragma once
 
 #include <list>
-#include <chrono>
 #include <memory>
 #include <string>
-#include <thread>
 #include <fstream>
 #include <iostream>
 #include <unordered_map>
 #include "./data/Cache.h"
-
-using namespace std::chrono_literals;
 
 class StorageManager;
 

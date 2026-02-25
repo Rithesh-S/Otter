@@ -8,10 +8,11 @@
 #include <iostream>
 #include <algorithm>
 #include <unordered_set>
+#include <unordered_map>
 #include "../DataNode/DataNode.h"
 
-class StorageManager;
 class BTree;
+class StorageManager;
 class Transaction;
 
 class Buffer {
@@ -21,6 +22,7 @@ class Buffer {
 
         size_t used_bytes = 0;
         std::vector<DataNode> records;
+        std::unordered_map<uint32_t, size_t> indexMap;
 
         BTree* treeRef;
         Transaction* transactionRef;

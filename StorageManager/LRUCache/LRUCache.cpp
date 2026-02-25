@@ -42,7 +42,6 @@ std::fstream* LRU::getFileFromLRU(uint32_t file_id) {
                 return nullptr;
             }
             creator.flush();
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
             creator.close();
         }
 
