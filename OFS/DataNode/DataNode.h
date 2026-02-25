@@ -21,6 +21,8 @@ class DataNode {
         DataNode(uint32_t id);
         DataNode(uint32_t id, char (&d) [TOT_SPACE]);
 
+        bool isEmpty();
+        uint32_t getId() const;
         std::pair<uint32_t, std::string> getData();
 };
 

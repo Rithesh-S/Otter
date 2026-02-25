@@ -4,33 +4,61 @@
 #include "../../Index/BTree/BTree.h"
 
 Buffer::Buffer(StorageManager *storageManager, BTree *treeRef, Transaction* transactionRef) : 
-    storageManager(storageManager), treeRef(treeRef), transactionRef(transactionRef) {}
+    storageManager(storageManager), treeRef(treeRef), transactionRef(transactionRef) {
+        records.reserve(VEC_SIZE);
+    }
 
-std::map<uint32_t, DataNode> Buffer::readData() { return records; }
+std::vector<DataNode> Buffer::readData() { return records; }
 
-void Buffer::removeData(uint32_t id) { records.erase(id); }
+void Buffer::removeData(uint32_t id) { 
+    auto it = std::find_if(records.begin(), records.end(), [id](const DataNode& node){
+        return node.getId() == id;
+    });
 
-DataNode Buffer::readData(uint32_t id) { return records.at(id); }
+    if(it != records.end()) {
+        *it = std::move(records.back());
+        records.pop_back();
+    }
+}
+
+DataNode Buffer::readData(uint32_t id) { 
+    auto it = std::find_if(records.begin(), records.end(), [id](const DataNode& node){
+        return node.getId() == id;
+    });
+
+    return it != records.end() ? *it : DataNode();
+ }
 
 bool Buffer::isFull() { return used_bytes == MAX_BYTES; }
 
-bool Buffer::contains(uint32_t id) { return records.find(id) != records.end(); }
+bool Buffer::contains(uint32_t id) { 
+    auto it = std::find_if(records.begin(), records.end(), [id](const DataNode& node){
+        return node.getId() == id;
+    });
+    return it != records.end(); 
+}
     
-void Buffer::writeData(uint32_t id, DataNode &record, size_t size) {
+void Buffer::writeData(DataNode &record) {
+    size_t size = sizeof(DataNode);
+    uint32_t id = record.getId();
+
     if (used_bytes + size > MAX_BYTES) return;
-    records[id] = record;
+    
+    auto it = std::find_if(records.begin(), records.end(), [id](const DataNode& node) {
+        return node.getId() == id;
+    });
+    if(it != records.end()) *it = std::move(record);
+    else records.emplace_back(record);
+
     used_bytes += size;
 }
 
 void Buffer::writeRecordsFromWal(std::vector<DataNode> walBuf) {
-    char data[124] = {0};
     for (auto &node : walBuf) {
-        uint32_t id = node.getData().first;
-        if(node.getData().second == data) {
-            removeData(id);
-            continue;
-        } 
-        writeData(id, node, sizeof(node));
+        uint32_t id = node.getId();
+        
+        if(node.isEmpty()) removeData(id);
+        else writeData(node);
     }
 }
 
@@ -39,36 +67,45 @@ void Buffer::flush() {
     if (isAlreadyFlushing) return;
     isAlreadyFlushing = true;
 
-    std::map<uint32_t, DataNode> snapshot;
+    std::vector<DataNode> snapshot;
     snapshot.swap(records); 
     used_bytes = 0;
 
     if (saveTheNodesIntoBin(snapshot)) {
         storageManager -> walFrameClearAndSave();
     } else {
-        records.merge(snapshot);
+        records.insert(records.end(), snapshot.begin(), snapshot.end());
         used_bytes = records.size() * 128;
     }
     isAlreadyFlushing = false;
 }
 
-bool Buffer::saveTheNodesIntoBin(std::map<uint32_t, DataNode> &snapshot) {
+bool Buffer::saveTheNodesIntoBin(std::vector<DataNode> &snapshot) {
     if (snapshot.empty()) return false;
     if (!transactionRef -> begin()) return false;
 
-    for (auto& [id, data] : snapshot) {
+    std::unordered_set<std::fstream*> touchedFiles;
+
+    for (auto& it : snapshot) {
+        uint32_t id = it.getId();
         auto [file_id, offset] = treeRef -> search(id);
+
         if(file_id != 0xFFFFFFFF && offset != 0xFFFFFFFFFFFFFFFF) {
-            storageManager -> overWriteRecord(file_id, offset, data);
+            storageManager -> overWriteRecord(file_id, offset, it);
         } else {
             auto [rp, file] = storageManager -> getInsertionPosAndFile();
+
             file -> clear();
             file -> seekp(rp.offset, std::ios::beg);
-            file -> write(reinterpret_cast<const char*>(&data), sizeof(data));
-            file -> flush();
+
+            file -> write(reinterpret_cast<const char*>(&it), sizeof(it));
+            touchedFiles.insert(file);
+
             treeRef -> insert(id, rp.file_id, rp.offset);
         }
     }
+
+    for (auto* f : touchedFiles) f -> flush();
 
     transactionRef -> commit();
     return true;

@@ -153,7 +153,7 @@ bool StorageManager::writeRecord(uint32_t id, std::string msg) {
     }
 
     wal -> writeWAL(dataNode);  //wal
-    buffer -> writeData(id, dataNode, sizeof(dataNode));
+    buffer -> writeData(dataNode);
     if (buffer -> isFull()) buffer -> flush();
     return true;
 }
@@ -168,7 +168,7 @@ bool StorageManager::updateRecord(uint32_t id, std::string msg) {
     
     if (buffer -> contains(id)) {
         wal -> writeWAL(dataNode);  //wal
-        buffer -> writeData(id, dataNode, sizeof(dataNode));
+        buffer -> writeData(dataNode);
         return true;
     } else {
         auto [file_id, offset] = tree -> search(id);

@@ -1,6 +1,9 @@
 #include "DataNode.h"
 
-DataNode::DataNode() { std::memset(data, 0, TOT_SPACE); }
+DataNode::DataNode() { 
+    id = -1;
+    std::memset(data, 0, TOT_SPACE); 
+}
 
 DataNode::DataNode(uint32_t id, char (&d) [TOT_SPACE]) : id(id) {
     std::memset(data, 0, TOT_SPACE);
@@ -19,3 +22,7 @@ std::pair<uint32_t,std::string> DataNode::getData() {
 
     return { id, std::string(data, actualLength) };
 }
+
+uint32_t DataNode::getId() const { return id; }
+
+bool DataNode::isEmpty() { return id == -1; }
