@@ -37,7 +37,6 @@ class StorageManager {
         std::unique_ptr<InsertionQueue> iQueue;
         std::unique_ptr<Transaction> transaction;
 
-        void writeRecord(std::vector<DataNode> walBuf);
         void overWriteRecord(uint32_t file_id, uint64_t offset, DataNode &node);
 
     public:
@@ -53,7 +52,7 @@ class StorageManager {
         std::pair<std::string, std::string> readRecord(uint32_t id);
 
         void walFrameClearAndSave();
-        void recover();
+        void init();
         
         std::string getWALBinPath();
         std::string getBTreeIndexPath();
@@ -65,6 +64,5 @@ class StorageManager {
         std::string getFilePathByIndex(uint32_t index);
         std::pair<RecordPointer, std::fstream*> getInsertionPosAndFile();
 
-        friend class WAL;
         friend class Buffer;
 };

@@ -5,6 +5,7 @@ LRU::LRU(StorageManager *sm, size_t size) : sm(sm), size(size) {}
 
 LRU::~LRU() {
     for(auto& entry: lruList) {
+        entry.file -> clear();
         if(entry.file && entry.file -> is_open()) {
             entry.file -> flush();
             entry.file -> close();
@@ -29,18 +30,32 @@ std::fstream* LRU::getFileFromLRU(uint32_t file_id) {
     }
 
     std::string filePath = sm -> getFilePathByIndex(file_id);
-    auto newFile = std::make_unique<std::fstream>(filePath, std::ios::binary | std::ios::in | std::ios::out);
+    std::unique_ptr<std::fstream> newFile = std::make_unique<std::fstream>();
+    newFile -> open(filePath, std::ios::binary | std::ios::in | std::ios::out);
+    
+    int attempt = 5;
+    while(!newFile -> is_open() && (attempt-- > 0)) {
+        {
+            std::ofstream creator(filePath, std::ios::binary);
+            if(!creator) {
+                throw std::runtime_error("\033[31mERROR:Unable to create file:" + filePath + ".\033[0m");
+                return nullptr;
+            }
+            creator.flush();
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            creator.close();
+        }
 
-    if(!newFile -> is_open()) {
-        std::ofstream creator(filePath, std::ios::binary);
-        if(!creator) return nullptr;
-        creator.close();
-
+        newFile -> clear();
         newFile -> open(filePath, std::ios::binary | std::ios::in | std::ios::out);
     }
-
-    lruList.push_back({file_id, std::move(newFile)});
-    lruMap[file_id] = std::prev(lruList.end());
-
-    return lruList.back().file.get();
+    
+    lruList.emplace_back(file_id, std::move(newFile));
+    auto lastElementIt = std::prev(lruList.end());
+    
+    lruMap[file_id] = lastElementIt;
+    std::fstream* finalPtr = lastElementIt->file.get();
+    
+    if (!finalPtr) throw std::runtime_error("LRU Critical: Unique_ptr delivered a nullptr.");
+    return finalPtr;
 }

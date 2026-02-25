@@ -1,17 +1,24 @@
 #include "BTree.h"
 #include "../../StorageManager/StorageManager.h"
 
+const uint32_t BTree::cacheSize = 256;
+
 BTree::BTree(StorageManager* sm, std::string path) : storageManager(sm), indexPath(path), rootPageId(0), nextPageId(1) {
     file.open(indexPath, std::ios::binary | std::ios::in | std::ios::out);
     
     if(!file.is_open()) {
         std::ofstream creator(indexPath, std::ios::binary);
-        if(!creator) return;
+        if(!creator) {
+            throw std::runtime_error("\033[31mERROR:Unable to create file:" + indexPath + ".\033[0m");
+            return;
+        }
         creator.close();
         
         file.open(indexPath, std::ios::binary | std::ios::in | std::ios::out);
     }
 
+    lruCache = std::make_unique<LRUTree>(cacheSize, &file);
+    
     file.clear();
     file.seekg(0, std::ios::end);
     if(file.tellp() <= 0) {
@@ -33,18 +40,17 @@ BTree::~BTree() {
     }
 }
 
-void BTree::writeNode(uint32_t pageId, const BTNode& node) {
+void BTree::writeNode(uint32_t pageId, BTNode& node) {
     file.clear();
     file.seekp(pageId * sizeof(BTNode));
     file.write(reinterpret_cast<const char*>(&node), sizeof(BTNode));
-    if(pageId == 0) file.flush();
+    lruCache -> updateCache(pageId, node);
+    file.flush();
 }
 
 BTNode BTree::readNode(uint32_t pageId) {
     BTNode node;
-    file.clear();
-    file.seekg(pageId * sizeof(BTNode));
-    file.read(reinterpret_cast<char*>(&node), sizeof(BTNode));
+    lruCache -> getNodeByPageId(pageId, node);
     return node;
 }
 

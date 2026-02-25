@@ -22,6 +22,18 @@ void Buffer::writeData(uint32_t id, DataNode &record, size_t size) {
     used_bytes += size;
 }
 
+void Buffer::writeRecordsFromWal(std::vector<DataNode> walBuf) {
+    char data[124] = {0};
+    for (auto &node : walBuf) {
+        uint32_t id = node.getData().first;
+        if(node.getData().second == data) {
+            removeData(id);
+            continue;
+        } 
+        writeData(id, node, sizeof(node));
+    }
+}
+
 void Buffer::flush() {
     static bool isAlreadyFlushing = false;
     if (isAlreadyFlushing) return;

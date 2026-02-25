@@ -1,16 +1,15 @@
 #include "WAL.h"
-#include "../../StorageManager/StorageManager.h"
-#include "../../TransactionManager/Transaction.h"
-#include "../Buffer/Buffer.h"
 
-WAL::WAL(StorageManager* sm, Buffer* bufferRef, Transaction* transactionRef ,std::string binPath) :
-    storageManager(sm), transactionRef(transactionRef), bufferRef(bufferRef) {
+WAL::WAL(std::string binPath) {
     if(walFrame == nullptr) walFrame = std::make_unique<WALFrame>();
     file.open(binPath, std::ios::binary | std::ios::in | std::ios::out);
     
     if(!file.is_open()) {
         std::ofstream creator(binPath, std::ios::binary);
-        if(!creator) return;
+        if(!creator) {
+            throw std::runtime_error("\033[31mERROR:Unable to create file: WALFrame.bin.\033[0m");
+            return;
+        }
         creator.close();
         
         file.open(binPath, std::ios::binary | std::ios::in | std::ios::out);
@@ -26,27 +25,10 @@ WAL::~WAL() {
     }
 }
 
-void WAL::loadWALData() {
-    file.seekg(0, std::ios::beg);
-    file.read(reinterpret_cast<char*>(walFrame.get()), sizeof(WALFrame));
-
-    if(transactionRef -> isFailed()) {
-        transactionRef -> commit();
-        storageManager -> writeRecord(readWAL());
-        bufferRef -> flush();
-        return;
-    }
-
-    if(walFrame -> record_count >= 8) {
-        storageManager -> writeRecord(readWAL());
-        bufferRef -> flush();
-        return;
-    }
-    
-    if(walFrame -> record_count > 0 && walFrame -> record_count < 8) storageManager -> writeRecord(readWAL());
-}
+bool WAL::isFull() { return walFrame -> record_count == MAX_RECORD_COUNT; }
 
 void WAL::saveNodesIntoWALBin() { 
+    file.clear();
     file.seekp(0, std::ios::beg);
     file.write(reinterpret_cast<const char*>(walFrame.get()), sizeof(WALFrame)); 
     file.flush();
@@ -55,16 +37,14 @@ void WAL::saveNodesIntoWALBin() {
 void WAL::walFrameClearAndSave() {
     walFrame -> record_count = 0;
     walFrame -> crc = 0;
-    for(size_t i = 0; i < 1024; i++) walFrame -> node[i] = '0';
+    for(size_t i = 0; i < 4096; i++) walFrame -> node[i] = '0';
     saveNodesIntoWALBin();
 }
 
 void WAL::writeWAL(DataNode& node) {
-    uint32_t actualCRC = verifyCRC();
-    if((walFrame -> magic != magic) || !actualCRC)  {
-        std::cerr << "\033[31mERROR:Inappropiate WAL File detected.\033[0m" << std::endl;
+    if((walFrame -> magic != magic) || !verifyCRC())  {
         walFrameClearAndSave();
-        return;
+        throw std::runtime_error("\033[31mERROR:Inappropiate WAL File detected.\033[0m");
     }
     
     char* dest = &walFrame -> node[walFrame -> record_count * nodeSize];
@@ -72,11 +52,10 @@ void WAL::writeWAL(DataNode& node) {
     walFrame -> record_count++;
     walFrame -> crc = generateCRC(walFrame -> node, walFrame -> record_count * nodeSize);
     saveNodesIntoWALBin();
-    
-    if(walFrame -> record_count >= 8) bufferRef -> flush();
 }
 
 std::vector<DataNode> WAL::readWAL() {
+    file.clear();
     file.seekg(0, std::ios::beg);
     file.read(reinterpret_cast<char*>(walFrame.get()), sizeof(WALFrame));
     std::vector<DataNode> records;
