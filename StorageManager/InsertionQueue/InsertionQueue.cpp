@@ -7,7 +7,10 @@ InsertionQueue::InsertionQueue(StorageManager* sm, std::string binPath) : storag
     file.open(binPath, std::ios::binary | std::ios::in | std::ios::out);
     if(!file.is_open()) {
         std::ofstream creator(binPath, std::ios::binary);
-        if(!creator) return;
+        if(!creator) {
+            throw std::runtime_error("\033[31mERROR:Unable to create file:" + binPath + ".\033[0m");
+            exit(1);
+        }
         creator.close();
 
         file.open(binPath, std::ios::binary | std::ios::in | std::ios::out);
@@ -29,6 +32,7 @@ RecordPointer InsertionQueue::getRecordPointer() {
 }
 
 void InsertionQueue::loadBinData() {
+    file.clear();
     file.seekg(0, std::ios::beg);
     RecordPointer temp;
     while(file.read(reinterpret_cast<char*>(&temp), sizeof(RecordPointer))) { insertionQueue.push(temp); }

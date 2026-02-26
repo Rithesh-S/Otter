@@ -4,48 +4,106 @@
 #include "../../Index/BTree/BTree.h"
 
 Buffer::Buffer(StorageManager *storageManager, BTree *treeRef, Transaction* transactionRef) : 
-    storageManager(storageManager), treeRef(treeRef), transactionRef(transactionRef) {}
-
-std::map<uint32_t, DataNode> Buffer::readData() { return records; }
-
-void Buffer::removeData(uint32_t id) { records.erase(id); }
-
-DataNode Buffer::readData(uint32_t id) { return records[id]; }
-
-bool Buffer::isFull() { return used_bytes == max_bytes; }
-
-bool Buffer::contains(uint32_t id) { return records.find(id) != records.end(); }
+    storageManager(storageManager), treeRef(treeRef), transactionRef(transactionRef) {
+        records.reserve(VEC_SIZE);
+    }
     
-void Buffer::writeData(uint32_t id, DataNode &record, size_t size) {
-    if (used_bytes + size > max_bytes) return;
-    records[id] = record;
-    used_bytes += size;
+std::vector<DataNode> Buffer::readData() { return records; }
+
+bool Buffer::isFull() { return used_bytes == MAX_BYTES; }
+
+bool Buffer::contains(uint32_t id) { return indexMap.find(id) != indexMap.end(); }
+
+void Buffer::removeData(uint32_t id) { 
+    auto it = indexMap.find(id);
+    if(it == indexMap.end()) return;
+
+    size_t indexToBeDeleted = it -> second;
+    
+    if (indexToBeDeleted < records.size() - 1) {
+        uint32_t lastElementId = records.back().getId();
+        records[indexToBeDeleted] = std::move(records.back());
+        indexMap[lastElementId] = indexToBeDeleted;
+    }
+    
+    records.pop_back();
+    indexMap.erase(it);
+}
+
+DataNode Buffer::readData(uint32_t id) { 
+    auto it = indexMap.find(id);
+    if(it != indexMap.end()) return records[it->second];
+    return DataNode();
+}
+    
+void Buffer::writeData(DataNode &record) {
+    size_t size = sizeof(DataNode);
+    uint32_t id = record.getId();
+
+    if(contains(id)) {
+        records[indexMap[id]] = std::move(record);
+    } else {
+        if (used_bytes + size > MAX_BYTES) return;
+        indexMap[id] = records.size();
+        records.emplace_back(std::move(record));
+        used_bytes += size;
+    }
+}
+
+void Buffer::writeRecordsFromWal(std::vector<DataNode> walBuf) {
+    for (auto &node : walBuf) {
+        uint32_t id = node.getId();
+        if(node.isEmpty()) removeData(id);
+        else writeData(node);
+    }
 }
 
 void Buffer::flush() {
-    if (saveTheNodesIntoBin(records)) {
-        records.clear();
+    static bool isAlreadyFlushing = false;
+    if (isAlreadyFlushing) return;
+    isAlreadyFlushing = true;
+
+    std::vector<DataNode> snapshot;
+    snapshot.swap(records); 
+    indexMap.clear();
+    used_bytes = 0;
+
+    if (saveTheNodesIntoBin(snapshot)) {
         storageManager -> walFrameClearAndSave();
-        used_bytes = 0;
+    } else {
+        for(size_t i = 0; i < snapshot.size(); ++i) indexMap[snapshot[i].getId()] = i;
+        records = std::move(snapshot);
+        used_bytes = records.size() * sizeof(DataNode);
     }
-    else return;
+    isAlreadyFlushing = false;
 }
 
-bool Buffer::saveTheNodesIntoBin(std::map<uint32_t, DataNode> &records) {
-    if (records.empty()) return false;
+bool Buffer::saveTheNodesIntoBin(std::vector<DataNode> &snapshot) {
+    if (snapshot.empty()) return false;
     if (!transactionRef -> begin()) return false;
 
-    for (auto [id, data] : records) {
+    std::unordered_set<std::fstream*> touchedFiles;
+
+    for (auto& it : snapshot) {
+        uint32_t id = it.getId();
         auto [file_id, offset] = treeRef -> search(id);
-        if(file_id != 0xFFFFFFFF && offset != 0xFFFFFFFFFFFFFFFF) storageManager -> overWriteRecord(file_id, offset, data);
-        else {
+
+        if(file_id != 0xFFFFFFFF && offset != 0xFFFFFFFFFFFFFFFF) {
+            storageManager -> overWriteRecord(file_id, offset, it);
+        } else {
             auto [rp, file] = storageManager -> getInsertionPosAndFile();
-            file -> seekg(rp.offset, std::ios::beg);
-            file -> write(reinterpret_cast<const char*>(&data), sizeof(data));
-            file -> flush();
+
+            file -> clear();
+            file -> seekp(rp.offset, std::ios::beg);
+
+            file -> write(reinterpret_cast<const char*>(&it), sizeof(it));
+            touchedFiles.insert(file);
+
             treeRef -> insert(id, rp.file_id, rp.offset);
         }
     }
+
+    for (auto* f : touchedFiles) f -> flush();
 
     transactionRef -> commit();
     return true;

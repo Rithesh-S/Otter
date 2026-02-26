@@ -1,17 +1,24 @@
 #include "BTree.h"
 #include "../../StorageManager/StorageManager.h"
 
+const uint32_t BTree::cacheSize = 256;
+
 BTree::BTree(StorageManager* sm, std::string path) : storageManager(sm), indexPath(path), rootPageId(0), nextPageId(1) {
     file.open(indexPath, std::ios::binary | std::ios::in | std::ios::out);
     
     if(!file.is_open()) {
         std::ofstream creator(indexPath, std::ios::binary);
-        if(!creator) return;
+        if(!creator) {
+            throw std::runtime_error("\033[31mERROR:Unable to create file:" + indexPath + ".\033[0m");
+            return;
+        }
         creator.close();
         
         file.open(indexPath, std::ios::binary | std::ios::in | std::ios::out);
     }
 
+    lruCache = std::make_unique<LRUTree>(cacheSize, &file);
+    
     file.clear();
     file.seekg(0, std::ios::end);
     if(file.tellp() <= 0) {
@@ -33,16 +40,17 @@ BTree::~BTree() {
     }
 }
 
-void BTree::writeNode(uint32_t pageId, const BTNode& node) {
+void BTree::writeNode(uint32_t pageId, BTNode& node) {
+    file.clear();
     file.seekp(pageId * sizeof(BTNode));
     file.write(reinterpret_cast<const char*>(&node), sizeof(BTNode));
-    if(pageId == 0) file.flush();
+    lruCache -> updateCache(pageId, node);
+    file.flush();
 }
 
 BTNode BTree::readNode(uint32_t pageId) {
     BTNode node;
-    file.seekg(pageId * sizeof(BTNode));
-    file.read(reinterpret_cast<char*>(&node), sizeof(BTNode));
+    lruCache -> getNodeByPageId(pageId, node);
     return node;
 }
 
@@ -99,20 +107,21 @@ void BTree::splitChild(uint32_t parentID, int i, uint32_t childID) {
     BTNode child = readNode(childID);
     BTNode newNode;
     
+    int t = M / 2;
     newNode.is_leaf = child.is_leaf;
-    newNode.n = (M / 2) - 1;
+    newNode.n = t - 1;
 
-    for (int j = 0; j < (M / 2) - 1; j++) {
-        newNode.keys[j] = child.keys[j + (M / 2)];
-        newNode.recordPointer[j] = child.recordPointer[j + (M / 2)];
+    for (int j = 0; j < t - 1; j++) {
+        newNode.keys[j] = child.keys[j + t];
+        newNode.recordPointer[j] = child.recordPointer[j + t];
     }
     if (!child.is_leaf) {
-        for (int j = 0; j < (M / 2); j++) {
-            newNode.child_page[j] = child.child_page[j + (M / 2)];
+        for (int j = 0; j < t; j++) {
+            newNode.child_page[j] = child.child_page[j + t];
         }
     }
 
-    child.n = (M / 2) - 1;
+    child.n = t - 1;
     uint32_t newNodeID = nextPageId++;
 
     for (int j = parent.n; j >= i + 1; j--) parent.child_page[j + 1] = parent.child_page[j];
@@ -123,6 +132,7 @@ void BTree::splitChild(uint32_t parentID, int i, uint32_t childID) {
         parent.recordPointer[j + 1] = parent.recordPointer[j];
     }
     parent.keys[i] = child.keys[(M / 2) - 1];
+    child.n = t - 1; 
     parent.recordPointer[i] = child.recordPointer[(M / 2) - 1];
     parent.n++;
 

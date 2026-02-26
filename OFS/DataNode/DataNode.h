@@ -9,18 +9,20 @@
 class DataNode {
 
     private:
-        static const uint8_t tot_space = 124;
+        static const uint8_t TOT_SPACE = 124;
         
         uint32_t id;
-        char data[tot_space] = {0};
+        char data[TOT_SPACE] = {0};
         
     public:
-        DataNode() = default;
+        DataNode();
         ~DataNode() = default;
         
         DataNode(uint32_t id);
-        DataNode(uint32_t id, char (&d) [tot_space]);
+        DataNode(uint32_t id, char (&d) [TOT_SPACE]);
 
+        bool isEmpty();
+        uint32_t getId() const;
         std::pair<uint32_t, std::string> getData();
 };
 
