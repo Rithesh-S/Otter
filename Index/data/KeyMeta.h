@@ -7,7 +7,6 @@
 
 struct KeyMeta {
     bool active = false;
-    bool persisted = false;
     RecordPointer rp;
 
     KeyMeta() = default;

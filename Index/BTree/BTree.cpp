@@ -76,8 +76,7 @@ bool BTree::search(uint32_t key, RecordPointer& rp) {
         while(i < node.n && key > node.keys[i]) i++;
         if( i < node.n && 
             key == node.keys[i] && 
-            node.keyMeta[i].active 
-            // && node.keyMeta[i].persisted
+            node.keyMeta[i].active
          ) {
                 rp = node.keyMeta[i].rp;
                 return true; 
@@ -100,7 +99,6 @@ bool BTree::markAsDeleted(uint32_t key, RecordPointer& rp) {
         if(i < node.n && key == node.keys[i]) {
             rp = node.keyMeta[i].rp;
             node.keyMeta[i].active = false;
-            node.keyMeta[i].persisted = false;
             writeNode(currentPageId, node);
             return true;
         }
@@ -122,24 +120,6 @@ bool BTree::findAndOverWrite(uint32_t key, RecordPointer& rp) {
         if(i < node.n && key == node.keys[i]) {
             node.keyMeta[i].rp = rp;
             node.keyMeta[i].active = true;
-            node.keyMeta[i].persisted = true;
-            writeNode(currentPageId, node);
-            return true;
-        }
-        if(node.is_leaf) return false;
-        currentPageId = node.child_page[i];
-    }
-}
-
-bool BTree::persistKey(uint32_t key) {
-    uint32_t currentPageId = rootPageId;
-    while (true) {
-        BTNode node;
-        readNode(currentPageId, node);
-        int i = 0;
-        while(i < node.n && key > node.keys[i]) i++;
-        if(i < node.n && key == node.keys[i]) {
-            node.keyMeta[i].persisted = true;
             writeNode(currentPageId, node);
             return true;
         }
@@ -149,9 +129,13 @@ bool BTree::persistKey(uint32_t key) {
 }
 
 bool BTree::insert(uint32_t key, RecordPointer& rp) {
-    if(contains(key)) return false;
     BTNode root;
     readNode(rootPageId, root); 
+
+    int findIdx = 0;
+    while (findIdx < root.n && key > root.keys[findIdx]) findIdx++;
+    if (findIdx < root.n && root.keys[findIdx] == key) return false;
+
     if(root.n == M - 1) {
         BTNode newNode;
         newNode.is_leaf = false;
@@ -164,12 +148,11 @@ bool BTree::insert(uint32_t key, RecordPointer& rp) {
 
         writeNode(rootPageId, newNode);
         splitChild(rootPageId, 0, oldRootId);
-        insertNonFull(rootPageId, key, rp);
+        return insertNonFull(rootPageId, key, rp);
     } else {
-        insertNonFull(rootPageId, key, rp);
+        return insertNonFull(rootPageId, key, rp);
     }
     file.flush();
-    return true;
 }
 
 void BTree::recovery(uint32_t key, RecordPointer& rp) {
@@ -218,10 +201,14 @@ void BTree::splitChild(uint32_t parentID, int i, uint32_t childID) {
     writeNode(newNodeID, newNode);
 }
 
-void BTree::insertNonFull(uint32_t pageId, uint32_t key, RecordPointer& rp) {
+bool BTree::insertNonFull(uint32_t pageId, uint32_t key, RecordPointer& rp) {
     BTNode node;
     readNode(pageId, node);
     int i = node.n - 1;
+
+    int findIdx = 0;
+    while (findIdx < node.n && key > node.keys[findIdx]) findIdx++;
+    if (findIdx < node.n && node.keys[findIdx] == key) return false;
 
     if (node.is_leaf) {
         while (i >= 0 && key < node.keys[i]) {
@@ -233,10 +220,10 @@ void BTree::insertNonFull(uint32_t pageId, uint32_t key, RecordPointer& rp) {
         node.keyMeta[i + 1] = KeyMeta(rp, true);
         node.n++;
         writeNode(pageId, node);
+        return true;
     } 
     else {
-        while (i >= 0 && key < node.keys[i]) i--;
-        i++; 
+        i = findIdx;
 
         BTNode child;
         readNode(node.child_page[i], child);
@@ -244,8 +231,9 @@ void BTree::insertNonFull(uint32_t pageId, uint32_t key, RecordPointer& rp) {
         if (child.n == M - 1) {
             splitChild(pageId, i, node.child_page[i]);
             readNode(pageId, node); 
+            if (key == node.keys[i]) return false; 
             if (key > node.keys[i]) i++;
         }
-        insertNonFull(node.child_page[i], key, rp);
+        return insertNonFull(node.child_page[i], key, rp);
     }
 }

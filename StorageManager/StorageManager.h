@@ -12,6 +12,7 @@
 #include "../OFS/DataNode/DataNode.h"
 #include "../OFS/BufferPool/BufferPool.h"
 #include "./InsertionQueue/InsertionQueue.h"
+#include "./PersistenceManager/PersistenceManager.h"
 // #include "../TransactionManager/Transaction.h"
 
 class StorageManager {
@@ -23,6 +24,7 @@ class StorageManager {
         std::unique_ptr<LRU> lruCache;
         std::unique_ptr<BufferPool> bPool;
         std::unique_ptr<InsertionQueue> iQueue;
+        std::unique_ptr<PersistenceManager> pManager;
         // std::unique_ptr<Transaction> transaction;
 
         void overWriteRecord(uint32_t file_id, uint64_t offset, DataNode &node);
@@ -38,9 +40,12 @@ class StorageManager {
 
         void init();
         
-        std::fstream* getFileByIndex(uint32_t index);
+        void persistBatch();
+        uint8_t getCurrentBatchId();
+        bool isBatchPersisted(uint8_t batch_id);
         void writePageIntoBin(BufferFrame& frame);
-        void readPageFromBin(uint16_t file_id, uint16_t page_no, Page& page);
+        std::fstream* getFileByIndex(uint32_t index);
         std::pair<uint16_t, uint16_t> getNewIndexForBinFlush();
         std::pair<RecordPointer, std::fstream*> getInsertionPosAndFile();
+        bool readPageFromBin(uint16_t file_id, uint16_t page_no, Page& page);
 };

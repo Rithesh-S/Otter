@@ -18,7 +18,7 @@ class BTree {
         void readNode(uint32_t pageId, BTNode& node);
         void writeNode(uint32_t pageId, BTNode &node);
         void splitChild(uint32_t parentId, int i, uint32_t childId);
-        void insertNonFull(uint32_t pageId, uint32_t key, RecordPointer& rp);
+        bool insertNonFull(uint32_t pageId, uint32_t key, RecordPointer& rp);
 
         bool contains(uint32_t key);
 

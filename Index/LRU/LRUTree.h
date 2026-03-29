@@ -9,7 +9,7 @@
 
 class LRUTree {
     private:
-        static const size_t CACHE_SIZE = 256;
+        static const size_t CACHE_SIZE = 512;
 
         BTNode frames[CACHE_SIZE];
         uint32_t pageMapping[CACHE_SIZE];

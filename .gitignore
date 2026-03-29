@@ -19,3 +19,5 @@ StorageManager/InsertionQueue/bin/*
 #conf file
 StorageManager/LRUCache/config/*
 !StorageManager/LRUCache/config/.gitkeep
+StorageManager/PersistenceManager/config/*
+!StorageManager/PersistenceManager/config/.gitkeep

@@ -7,6 +7,7 @@ StorageManager::StorageManager() {
         if (tree == nullptr) tree = std::make_unique<BTree>();
         if (bPool == nullptr) bPool = std::make_unique<BufferPool>(this);
         if (iQueue == nullptr) iQueue = std::make_unique<InsertionQueue>(this);
+        if (pManager == nullptr) pManager = std::make_unique<PersistenceManager>();
     } catch(const std::runtime_error& e) {
         std::cerr << e.what() << std::endl;
         std::cerr << "\033[31mERROR: Unexpected Error during Constructor Initialization.\033[0m" << std::endl;
@@ -25,6 +26,12 @@ StorageManager::StorageManager() {
 // }
 
 std::pair<uint16_t, uint16_t> StorageManager::getNewIndexForBinFlush() { return lruCache -> getNewIndex(); }
+
+uint8_t StorageManager::getCurrentBatchId() { return pManager -> getCurrentBatchId(); }
+
+void StorageManager::persistBatch() { pManager -> persistBatch(); }
+
+bool StorageManager::isBatchPersisted(uint8_t batch_id) { return pManager -> isPersisted(batch_id); }
 
 std::fstream* StorageManager::getFileByIndex(uint32_t index) { 
     try {
@@ -58,6 +65,7 @@ void StorageManager::writePageIntoBin(BufferFrame& frame) {
         throw std::runtime_error("\033[31mERROR: Unable to Write Bin File.\033[0m");
     }
     file -> flush();
+    persistBatch();
 }
 
 void StorageManager::writePageIntoBin(uint16_t file_id, uint16_t page_no, Page& page) {
@@ -72,7 +80,7 @@ void StorageManager::writePageIntoBin(uint16_t file_id, uint16_t page_no, Page& 
     file -> flush();
 }
 
-void StorageManager::readPageFromBin(uint16_t file_id, uint16_t page_no, Page& page) {
+bool StorageManager::readPageFromBin(uint16_t file_id, uint16_t page_no, Page& page) {
     std::fstream* file = getFileByIndex(file_id);
     size_t pos = page_no * PAGE_SIZE;
 
@@ -81,7 +89,7 @@ void StorageManager::readPageFromBin(uint16_t file_id, uint16_t page_no, Page& p
 
     if (pos >= fileSize) {
         page = Page(page_no); 
-        return;
+        return true;
     }
 
     file -> clear();
@@ -90,6 +98,7 @@ void StorageManager::readPageFromBin(uint16_t file_id, uint16_t page_no, Page& p
     if (!file -> read(reinterpret_cast<char*>(&page), sizeof(Page))) {
         throw std::runtime_error("\033[31mERROR: Physical Read Failed at Page " + std::to_string(page_no) + "\033[0m");
     }
+    return false;
 }
 
 std::pair<std::string, std::string> StorageManager::readRecord(uint32_t id) {
@@ -128,6 +137,7 @@ bool StorageManager::writeRecord(uint32_t id, std::string msg) {
 
     Page* page = bPool -> getPage(rp.file_id, rp.page_no);
     page -> writeData(dataNode);
+    bPool -> makeDirty(rp.file_id, rp.page_no);
     return true;
 }
 
@@ -145,7 +155,8 @@ bool StorageManager::updateRecord(uint32_t id, std::string msg) {
     }
     
     Page* page = bPool -> getPage(rp.file_id, rp.page_no);
-    if(!page -> writeData(dataNode)) return false;      // Duplicate or Page is full
+    if(!page -> writeData(dataNode)) return false;    // Duplicate or Page is full
+    bPool -> makeDirty(rp.file_id, rp.page_no);
     return true;
 }
 
@@ -156,6 +167,7 @@ bool StorageManager::deleteRecord(uint32_t id) {
     Page* page = bPool -> getPage(rp.file_id, rp.page_no);
     if(!page -> removeData(id)) return false;           // ID not found
 
+    bPool -> makeDirty(rp.file_id, rp.page_no);
     iQueue -> putRecordPointer(rp);
     return true;
 }

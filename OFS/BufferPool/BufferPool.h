@@ -9,7 +9,7 @@ class StorageManager;
 
 class BufferPool {
     private:
-        static const size_t POOL_SIZE = 256;
+        static const size_t POOL_SIZE = 2048;
 
         // Physical Order
         BufferFrame frames[POOL_SIZE];
@@ -36,4 +36,5 @@ class BufferPool {
         ~BufferPool();
 
         Page* getPage(uint16_t file_id, uint16_t page_no);
+        void makeDirty(uint16_t file_id, uint16_t page_no);
 };

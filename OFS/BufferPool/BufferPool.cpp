@@ -18,6 +18,14 @@ size_t BufferPool::getFreeSlots() {
     return idx;
 }
 
+void BufferPool::makeDirty(uint16_t file_id, uint16_t page_no) {
+    uint32_t combinedKey = keyCombiner(file_id, page_no);
+    if(lookUp.find(combinedKey) != lookUp.end()) {
+        auto it = lookUp[combinedKey];
+        frames[*it].makeDirty();
+    }
+}
+
 Page* BufferPool::getPage(uint16_t file_id, uint16_t page_no) {
     uint32_t combinedKey = keyCombiner(file_id, page_no);
     if (lookUp.find(combinedKey) != lookUp.end()) {
@@ -28,16 +36,12 @@ Page* BufferPool::getPage(uint16_t file_id, uint16_t page_no) {
     
     if(isFull()) evict();
 
+    Page page;  
     size_t idx = getFreeSlots();
-
-    Page page;   
-    sm -> readPageFromBin(file_id, page_no, page);
+    if(sm -> readPageFromBin(file_id, page_no, page)) frames[idx] = BufferFrame(file_id, page_no, page, true);
+    else frames[idx] = BufferFrame(file_id, page_no, page);
 
     uint32_t newCombinedKey = keyCombiner(file_id, page_no);
-
-    frames[idx] = BufferFrame(file_id, page_no, page);
-    frames[idx].makeDirty();
-
     lruList.emplace_back(idx);
     auto lastElementIt = std::prev(lruList.end());
     lookUp[newCombinedKey] = lastElementIt;

@@ -22,9 +22,10 @@ InsertionQueue::~InsertionQueue() { saveBinData(); }
 
 void InsertionQueue::putRecordPointer(RecordPointer rp) { insertionQueue.push(rp); }
 
-void InsertionQueue::refillQueue(std::pair<uint16_t, uint16_t> indexPair) { 
+void InsertionQueue::refillQueue(std::pair<uint16_t, uint16_t> indexPair) {
+    uint8_t batch_id = storageManager -> getCurrentBatchId();
     for(size_t i = 0; i < RECORD_COUNT; ++i) 
-        putRecordPointer({ indexPair.first, indexPair.second }); 
+        putRecordPointer({ batch_id, indexPair.first, indexPair.second }); 
 }
 
 RecordPointer InsertionQueue::getRecordPointer() {

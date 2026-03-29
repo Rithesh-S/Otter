@@ -12,6 +12,7 @@ struct BufferFrame {
     public:
         BufferFrame() = default;
         BufferFrame(uint16_t file_id, uint16_t page_no, Page page) : file_id(file_id), page_no(page_no), page(page) {};
+        BufferFrame(uint16_t file_id, uint16_t page_no, Page page, bool isDirty) : file_id(file_id), page_no(page_no), page(page), is_dirty(isDirty) {};
 
         Page* getPage() { return &page; }
         bool isDirty() { return is_dirty; }
