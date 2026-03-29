@@ -2,14 +2,13 @@
 #include <string>
 #include <chrono>
 #include <vector>
-#include "./StorageManager/StorageManager.h"
+#include "../StorageManager/StorageManager.h"
 
 int main() {
     StorageManager sm;
-    sm.init();
 
     const int total_records = 100000;
-    
+
     std::cout << "--- Otter DB Performance Benchmark ---" << std::endl;
     std::cout << "Target: " << total_records << " records." << std::endl;
 

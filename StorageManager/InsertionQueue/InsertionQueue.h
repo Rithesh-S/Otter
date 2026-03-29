@@ -1,6 +1,7 @@
 #pragma once
 
 #include <queue>
+#include <string>
 #include <fstream>
 #include <cstdint>
 #include "../../Index/data/RecordPointer.h"
@@ -9,19 +10,20 @@ class StorageManager;
 
 class InsertionQueue {
     private:
-        static const size_t bufferSize = 4096;
-        static const size_t dataNodeSize = 128;
+        static const size_t RECORD_COUNT = 30;
         static std::queue<RecordPointer> insertionQueue;
+
+        const std::string binPath = "./StorageManager/InsertionQueue/bin/DQueue.bin";
 
         std::fstream file;
         StorageManager* storageManager;
 
         void loadBinData();
         void saveBinData();
-        void refillQueue(uint32_t file_id);
+        void refillQueue(std::pair<uint16_t, uint16_t> indexPair);
 
     public:
-        InsertionQueue(StorageManager* sm, std::string binPath);
+        InsertionQueue(StorageManager* sm);
         ~InsertionQueue();
         
         RecordPointer getRecordPointer();

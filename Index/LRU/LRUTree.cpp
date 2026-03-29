@@ -1,56 +1,74 @@
 #include "LRUTree.h"
 
-LRUTree::LRUTree(size_t size, std::fstream* file) : size(size), file(file) {}
-
-LRUTree::~LRUTree() {
-    lruList.clear();
-    lruMap.clear();
+LRUTree::LRUTree(std::fstream* file) : file(file) {
+    for (size_t i = 0; i < CACHE_SIZE; i++) freeSlots.push_back(i);
 }
 
-void LRUTree::getNodeByPageId(uint32_t page_id,BTNode &node) {
-    if (lruMap.find(page_id) != lruMap.end()) {
-        auto it = lruMap[page_id];
-        lruList.splice(lruList.end(), lruList, it);
-        node = *(it -> node);
+bool LRUTree::isFull() { 
+    return lruList.size() >= CACHE_SIZE; 
+}
+
+size_t LRUTree::getFreeSlot() {
+    if (freeSlots.empty()) return 0;
+    size_t idx = freeSlots.front();
+    freeSlots.pop_front();
+    return idx;
+}
+
+void LRUTree::getNodeByPageId(uint32_t page_id, BTNode& node) {
+    auto it = lookUp.find(page_id);
+    
+    if (it != lookUp.end()) {
+        lruList.splice(lruList.end(), lruList, it -> second);
+        node = frames[*(it -> second)]; 
         return;
     }
 
-    if (lruList.size() >= size) {
-        uint32_t oldPageId = lruList.front().page_id;
-        lruMap.erase(oldPageId);
+    if (isFull()) {
+        size_t victimIdx = lruList.front();
+        uint32_t victimPageId = pageMapping[victimIdx];
+        
+        lookUp.erase(victimPageId);
         lruList.pop_front();
+        freeSlots.push_back(victimIdx);
     }
 
-    BTNode newNode;
+    size_t idx = getFreeSlot();
+
     file -> clear();
-    file -> seekg(page_id * sizeof(BTNode));
-    file -> read(reinterpret_cast<char*>(&newNode), sizeof(BTNode));
+    file -> seekg((std::streamoff)page_id * sizeof(BTNode));
+    file -> read(reinterpret_cast<char*>(&frames[idx]), sizeof(BTNode));
 
-    lruList.push_back({page_id, std::make_shared<BTNode>(newNode)});
-    lruMap[page_id] = std::prev(lruList.end());
+    pageMapping[idx] = page_id;
+    lruList.push_back(idx);
+    lookUp[page_id] = std::prev(lruList.end());
 
-    node = *(lruList.back().node);
+    node = frames[idx];
 }
 
 void LRUTree::updateCache(uint32_t page_id, BTNode& node) {
-    if (lruMap.find(page_id) != lruMap.end()) {
-        auto it = lruMap[page_id];
-        *(it -> node) = node;
-        lruList.splice(lruList.end(), lruList, it);
+    auto it = lookUp.find(page_id);
+    
+    if (it != lookUp.end()) {
+        size_t idx = *(it -> second);
+        frames[idx] = node;
+        lruList.splice(lruList.end(), lruList, it -> second);
         return;
     }
 
-    if (lruList.size() >= size) {
-        uint32_t oldPageId = lruList.front().page_id;
-        lruMap.erase(oldPageId);
+    if (isFull()) {
+        size_t victimIdx = lruList.front();
+        uint32_t victimPageId = pageMapping[victimIdx];
+        
+        lookUp.erase(victimPageId);
         lruList.pop_front();
+        freeSlots.push_back(victimIdx);
     }
 
-    BTNode newNode;
-    file -> clear();
-    file -> seekg(page_id * sizeof(BTNode));
-    file -> read(reinterpret_cast<char*>(&newNode), sizeof(BTNode));
-
-    lruList.push_back({page_id, std::make_shared<BTNode>(newNode)});
-    lruMap[page_id] = std::prev(lruList.end());
+    size_t idx = getFreeSlot();
+    
+    frames[idx] = node;
+    pageMapping[idx] = page_id;
+    lruList.push_back(idx);
+    lookUp[page_id] = std::prev(lruList.end());
 }

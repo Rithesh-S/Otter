@@ -8,19 +8,25 @@
 #include <unordered_map>
 #include "./data/Cache.h"
 
-class StorageManager;
-
 class LRU {
     private:
-        size_t size;
+        static const size_t CACHE_SIZE = 50;
+        const std::string metaDataPath = "./StorageManager/LRUCache/config/metadata.conf";
+
+        std::pair<uint32_t, uint32_t> indexPair; 
+        std::fstream metaFile;
+
         std::list<Cache> lruList;
         std::unordered_map<uint32_t, std::list<Cache>::iterator> lruMap;
 
-        StorageManager* sm;
-
+        void loadMetaData();
+        void saveMetaData();
+        std::string getFilePathByIndex(uint32_t index);
+        
     public:
-        LRU(StorageManager* sm, size_t size);
+        LRU();
         ~LRU();
-
+        
+        std::pair<uint16_t, uint16_t> getNewIndex();
         std::fstream* getFileFromLRU(uint32_t file_id);
 };

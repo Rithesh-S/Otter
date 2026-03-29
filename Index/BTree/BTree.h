@@ -6,30 +6,31 @@
 #include "../LRU/LRUTree.h"
 #include "../data/BTreeNode.h"
 
-class StorageManager;
-
 class BTree {
     private:
-        static const uint32_t cacheSize;
+        const std::string indexPath = "./Index/bin/index.bin"; 
 
         std::fstream file;
         uint32_t rootPageId;
         uint32_t nextPageId;
-        std::string indexPath;
-        StorageManager* storageManager;
         std::unique_ptr<LRUTree> lruCache;
 
-        BTNode readNode(uint32_t pageId);
+        void readNode(uint32_t pageId, BTNode& node);
         void writeNode(uint32_t pageId, BTNode &node);
         void splitChild(uint32_t parentId, int i, uint32_t childId);
-        bool findAndOverWrite(uint32_t key, uint32_t file_id, uint64_t offset);
-        void insertNonFull(uint32_t pageId, uint32_t key, uint32_t file_id, uint64_t offset);
+        void insertNonFull(uint32_t pageId, uint32_t key, RecordPointer& rp);
+
+        bool contains(uint32_t key);
 
     public:
-        BTree(StorageManager* sm, std::string path);
+        BTree();
         ~BTree();
+        
+        void recovery(uint32_t key, RecordPointer& rp);
+        bool persistKey(uint32_t key);
 
-        RecordPointer search(uint32_t key);
-        RecordPointer markAsDeleted(uint32_t key);
-        void insert(uint32_t key, uint32_t file_id, uint64_t offset);
+        bool insert(uint32_t key, RecordPointer& rp);
+        bool search(uint32_t key, RecordPointer& rp);
+        bool markAsDeleted(uint32_t key, RecordPointer& rp);
+        bool findAndOverWrite(uint32_t key, RecordPointer& rp);
 };

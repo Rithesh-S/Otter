@@ -6,15 +6,16 @@ output/*
 db_bench.exe
 
 #chunk file
-OFS/Buffer/bin/*
-!OFS/Buffer/bin/.gitkeep
+OFS/bin/*
+!OFS/bin/.gitkeep
+TransactionManager/RecoveryManager/bin/*
+!TransactionManager/RecoveryManager/bin/.gitkeep
+
 Index/bin/*
 !Index/bin/.gitkeep
 StorageManager/InsertionQueue/bin/*
 !StorageManager/InsertionQueue/bin/.gitkeep
-OFS/WAL/bin/*
-!OFS/WAL/bin/.gitkeep
 
 #conf file
-OFS/Buffer/config/*
-!OFS/Buffer/config/.gitkeep
+StorageManager/LRUCache/config/*
+!StorageManager/LRUCache/config/.gitkeep

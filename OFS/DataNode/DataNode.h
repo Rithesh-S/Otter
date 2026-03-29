@@ -7,7 +7,6 @@
 #pragma pack(push, 1)
 
 class DataNode {
-
     private:
         static const uint8_t TOT_SPACE = 124;
         
@@ -16,7 +15,6 @@ class DataNode {
         
     public:
         DataNode();
-        ~DataNode() = default;
         
         DataNode(uint32_t id);
         DataNode(uint32_t id, char (&d) [TOT_SPACE]);

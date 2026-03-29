@@ -1,48 +1,30 @@
 #include "StorageManager.h"
 
-const size_t StorageManager::cacheSize = 50;
-const uint8_t StorageManager::length = 124;
-
 StorageManager::StorageManager() { 
     try {
-        if (wal == nullptr) wal = std::make_unique<WAL>(walBinPath);
-        if (transaction == nullptr) transaction = std::make_unique<Transaction>();
-        if (tree == nullptr) tree = std::make_unique<BTree>(this, treeIndexPath);
-        if (buffer == nullptr) buffer = std::make_unique<Buffer>(this, tree.get(), transaction.get());
-        if (lruCache == nullptr) lruCache = std::make_unique<LRU>(this, cacheSize);
-        if (iQueue == nullptr) iQueue = std::make_unique<InsertionQueue>(this, iQueueBinPath);
-    } catch(...) {
-        std::cerr << "\033[31mERROR:Unexpected Error during Constructor Initialization.\033[0m" << std::endl;
+        // if (transaction == nullptr) transaction = std::make_unique<Transaction>();
+        if (lruCache == nullptr) lruCache = std::make_unique<LRU>();
+        if (tree == nullptr) tree = std::make_unique<BTree>();
+        if (bPool == nullptr) bPool = std::make_unique<BufferPool>(this);
+        if (iQueue == nullptr) iQueue = std::make_unique<InsertionQueue>(this);
+    } catch(const std::runtime_error& e) {
+        std::cerr << e.what() << std::endl;
+        std::cerr << "\033[31mERROR: Unexpected Error during Constructor Initialization.\033[0m" << std::endl;
         exit(1);
     }
 }
 
-StorageManager::~StorageManager() { 
-    saveMetaData();
-    metaFile.close();
-}
+// void StorageManager::init() {
+//     if(transaction -> shouldRecovery()) {
+//         std::vector<std::pair<DataNode, RecordPointer>> recoveryNodes;
+//         transaction -> recovery(recoveryNodes);
+//         // over write the records.
+//         // using the recordpointer the page is overwritern.
+//         // calls the btree to overwrite.
+//     }
+// }
 
-void StorageManager::init() {
-    std::vector<DataNode> recoveryRecords = wal -> readWAL();
-    buffer -> writeRecordsFromWal(recoveryRecords);
-
-    if(wal -> isFull() || transaction -> isFailed()) {
-        transaction -> commit();
-        buffer -> flush();
-        wal -> walFrameClearAndSave();
-    }  
-    loadMetaData();
-}
-
-std::string StorageManager::getBTreeIndexPath() { return treeIndexPath; }
-
-std::string StorageManager::getWALBinPath() { return walBinPath; }
-
-std::string StorageManager::getInsertionQueueBinPath() { return iQueueBinPath; }
-
-uint32_t StorageManager::getCurrentBinIndex() { return index; }
-
-void StorageManager::walFrameClearAndSave() { wal -> walFrameClearAndSave(); }
+std::pair<uint16_t, uint16_t> StorageManager::getNewIndexForBinFlush() { return lruCache -> getNewIndex(); }
 
 std::fstream* StorageManager::getFileByIndex(uint32_t index) { 
     try {
@@ -54,81 +36,73 @@ std::fstream* StorageManager::getFileByIndex(uint32_t index) {
     }
 }
 
-std::string StorageManager::getFilePathByIndex(uint32_t index) {
-    std::string binFileName = basepath + "/Buffer/bin/chunk_file_" + std::to_string(index) + ".bin";
-    return binFileName;
-}
-
 std::pair<RecordPointer, std::fstream*> StorageManager::getInsertionPosAndFile() {
     RecordPointer rp = iQueue -> getRecordPointer();
     auto file = getFileByIndex(rp.file_id);
     if(file == nullptr) {
-        std::cerr << "\033[31mERROR:File Not Available.\033[0m" << std::endl;
-        exit(1);        //program exit!
+        throw std::runtime_error("\033[31mERROR: File Not Available.\033[0m");       
     }
     return { rp, file }; 
 }
 
-uint32_t StorageManager::getNewIndexForBinFlush() {
-    index++;
-    saveMetaData();
-    return index;
+void StorageManager::writePageIntoBin(BufferFrame& frame) {
+    if(!frame.isDirty()) return;
+    auto [ file_id, page_no ] = frame.getFileIdAndPageNo();
+
+    std::fstream* file = getFileByIndex(file_id);
+    size_t pos = page_no * PAGE_SIZE;
+
+    file -> clear();
+    file -> seekp(pos, std::ios::beg);
+    if(!file -> write(reinterpret_cast<const char*>(frame.getPage()), sizeof(Page))) {
+        throw std::runtime_error("\033[31mERROR: Unable to Write Bin File.\033[0m");
+    }
+    file -> flush();
 }
 
-void StorageManager::saveMetaData() {
-    if (metaFile.is_open()) {
-        metaFile.clear();
-        metaFile.seekp(0, std::ios::beg);
-        
-        metaFile.write(reinterpret_cast<const char*>(&index), sizeof(index));
-        metaFile.flush();
+void StorageManager::writePageIntoBin(uint16_t file_id, uint16_t page_no, Page& page) {
+    std::fstream* file = getFileByIndex(file_id);
+    size_t pos = page_no * PAGE_SIZE;
+
+    file -> clear();
+    file -> seekp(pos, std::ios::beg);
+    if(!file -> write(reinterpret_cast<const char*>(&page), sizeof(Page))) {
+        throw std::runtime_error("\033[31mERROR: Unable to Write Bin File.\033[0m");
     }
+    file -> flush();
 }
 
-void StorageManager::loadMetaData() {
-    metaFile.open(metaDataPath, std::ios::binary | std::ios::in | std::ios::out);
-    if(!metaFile.is_open()) {
-        std::ofstream creator(metaDataPath, std::ios::binary);
-        if(!creator) {
-            throw std::runtime_error("\033[31mERROR:Unable to create file:" + metaDataPath + ".\033[0m");
-            return;
-        }
-        creator.close();
+void StorageManager::readPageFromBin(uint16_t file_id, uint16_t page_no, Page& page) {
+    std::fstream* file = getFileByIndex(file_id);
+    size_t pos = page_no * PAGE_SIZE;
 
-        metaFile.open(metaDataPath, std::ios::binary | std::ios::in | std::ios::out);
-        index = 0xFFFFFFFF;
-        saveMetaData();
+    file -> seekg(0, std::ios::end);
+    size_t fileSize = file -> tellg();
+
+    if (pos >= fileSize) {
+        page = Page(page_no); 
+        return;
     }
 
-    metaFile.clear();
-    metaFile.seekg(0, std::ios::beg);
-    metaFile.read(reinterpret_cast<char*>(&index), sizeof(index));
-
-    if (metaFile.gcount() < sizeof(index)) {
-        index = 0xFFFFFFFF;
-        saveMetaData();
+    file -> clear();
+    file -> seekg(pos, std::ios::beg);
+    
+    if (!file -> read(reinterpret_cast<char*>(&page), sizeof(Page))) {
+        throw std::runtime_error("\033[31mERROR: Physical Read Failed at Page " + std::to_string(page_no) + "\033[0m");
     }
 }
 
 std::pair<std::string, std::string> StorageManager::readRecord(uint32_t id) {
-    if (buffer -> contains(id)) {
-        auto data = buffer -> readData(id).getData();
-        return { std::to_string(data.first), data.second };
-    }
+    RecordPointer rp;
+    if (!tree -> search(id, rp)) return { "", "" };
     
-    auto [file_id, offset] = tree -> search(id);
-    if (file_id == 0xFFFFFFFF) return { "", "" };
+    Page* page = bPool -> getPage(rp.file_id, rp.page_no);
     
-    auto file = getFileByIndex(file_id);
     DataNode dataNode;
+    if(!page -> readData(dataNode, id)) return { "", "" };
     
-    file -> clear();
-    file -> seekg(offset);
-    if (file -> read(reinterpret_cast<char *>(&dataNode), sizeof(DataNode))) {
-        auto data = dataNode.getData();
-        return { std::to_string(data.first), data.second };
-    }
-    return { "", "" };
+    auto data = dataNode.getData();
+    return { std::to_string(data.first), data.second };
 }
 
 void StorageManager::overWriteRecord(uint32_t file_id, uint64_t offset, DataNode &node) {
@@ -140,60 +114,48 @@ void StorageManager::overWriteRecord(uint32_t file_id, uint64_t offset, DataNode
 }
 
 bool StorageManager::writeRecord(uint32_t id, std::string msg) {
-    char buf[length] = {0};
+    char buf[DATA_LENGTH] = {0};
+    if (msg.size() > DATA_LENGTH)  std::cerr << "\033[33mWARNING: The data size exceeds " << DATA_LENGTH << ", hence excess length is truncated.\033[0m" << std::endl;
+    std::memcpy(buf, msg.c_str(), std::min((size_t) DATA_LENGTH, msg.size()));
 
-    if (msg.size() > length)  std::cerr << "\033[33mWARNING: The data size exceeds " << length << ", hence excess length is truncated.\033[0m" << std::endl;
-
-    std::memcpy(buf, msg.c_str(), std::min((size_t)length, msg.size()));
     DataNode dataNode = DataNode(id, buf);
+    RecordPointer rp = iQueue -> getRecordPointer();
     
-    if (buffer -> contains(id) || (tree -> search(id).file_id != 0xFFFFFFFF)) {
-        std::cerr << "\033[33mWARNING: Duplicate ID found, Hence Ignored.\033[0m" << std::endl;
+    if (!tree -> insert(id, rp)) {
+        // std::cerr << "\033[33mWARNING: Duplicate ID found, Hence Ignored.\033[0m" << std::endl;
         return false;
     }
 
-    wal -> writeWAL(dataNode);  //wal
-    buffer -> writeData(dataNode);
-    if (buffer -> isFull()) buffer -> flush();
+    Page* page = bPool -> getPage(rp.file_id, rp.page_no);
+    page -> writeData(dataNode);
     return true;
 }
 
 bool StorageManager::updateRecord(uint32_t id, std::string msg) {
-    char buf[length] = {0};
+    char buf[DATA_LENGTH] = {0};
+    if (msg.size() > DATA_LENGTH) std::cerr << "\033[33mWARNING: The data size exceeds " << DATA_LENGTH << ", hence excess length is truncated.\033[0m" << std::endl;
+    std::memcpy(buf, msg.c_str(), std::min((size_t) DATA_LENGTH, msg.size()));
 
-    if (msg.size() > length) std::cerr << "\033[33mWARNING: The data size exceeds " << length << ", hence excess length is truncated.\033[0m" << std::endl;
-
-    std::memcpy(buf, msg.c_str(), std::min((size_t)length, msg.size()));
     DataNode dataNode = DataNode(id, buf);
-    
-    if (buffer -> contains(id)) {
-        wal -> writeWAL(dataNode);  //wal
-        buffer -> writeData(dataNode);
-        return true;
-    } else {
-        auto [file_id, offset] = tree -> search(id);
-        if (file_id != 0xFFFFFFFF) {
-            wal -> writeWAL(dataNode);   //wal
-            overWriteRecord(file_id, offset, dataNode);
-            return true;
-        } else {
-            std::cerr << "\033[33mWARNING: ID not found!\033[0m" << std::endl;
-            return false;
-        }
+    RecordPointer rp;
+
+    if(!tree -> search(id, rp)) {
+        // std::cerr << "\033[33mWARNING: ID not found!\033[0m" << std::endl;
+        return false;
     }
+    
+    Page* page = bPool -> getPage(rp.file_id, rp.page_no);
+    if(!page -> writeData(dataNode)) return false;      // Duplicate or Page is full
+    return true;
 }
 
 bool StorageManager::deleteRecord(uint32_t id) {
-    if(buffer -> contains(id)) {
-        DataNode node(id);
-        wal -> writeWAL(node);   // wal
-        buffer -> removeData(id);
-    } else if(tree -> search(id).file_id != 0xFFFFFFFF) {
-        RecordPointer rp = tree -> markAsDeleted(id);
-        iQueue -> putRecordPointer(rp);
-    } else {
-        std::cerr << "\033[33mWARNING: ID not found!\033[0m" << std::endl;
-        return false;
-    }
+    RecordPointer rp;
+    if(!tree -> markAsDeleted(id, rp)) return false;    // ID not found
+
+    Page* page = bPool -> getPage(rp.file_id, rp.page_no);
+    if(!page -> removeData(id)) return false;           // ID not found
+
+    iQueue -> putRecordPointer(rp);
     return true;
 }

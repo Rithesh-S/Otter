@@ -9,16 +9,22 @@
 
 class LRUTree {
     private:
-        size_t size;
-        std::list<CachedNode> lruList;
-        std::unordered_map<uint32_t, std::list<CachedNode>::iterator> lruMap;
+        static const size_t CACHE_SIZE = 256;
+
+        BTNode frames[CACHE_SIZE];
+        uint32_t pageMapping[CACHE_SIZE];
+        std::list<size_t> lruList;
+        std::list<size_t> freeSlots;
+        std::unordered_map<uint32_t, std::list<size_t>::iterator> lookUp;
 
         std::fstream* file;
 
-    public:
-        LRUTree(size_t size, std::fstream* file);
-        ~LRUTree();
+        size_t getFreeSlot();
+        bool isFull();
 
-        void getNodeByPageId(uint32_t page_id, BTNode &node);
+    public:
+        LRUTree(std::fstream* file);
+
+        void getNodeByPageId(uint32_t page_id, BTNode& node);
         void updateCache(uint32_t page_id, BTNode &node);
 };

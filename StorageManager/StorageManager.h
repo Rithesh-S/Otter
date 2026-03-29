@@ -7,62 +7,40 @@
 #include <fstream>
 #include <iostream>
 #include <filesystem>
+#include "./LRUCache/LRUCache.h"
 #include "../Index/BTree/BTree.h"
 #include "../OFS/DataNode/DataNode.h"
-#include "../OFS/Buffer/Buffer.h"
-#include "../OFS/WAL/WAL.h"
-#include "./LRUCache/LRUCache.h"
+#include "../OFS/BufferPool/BufferPool.h"
 #include "./InsertionQueue/InsertionQueue.h"
-#include "../TransactionManager/Transaction.h"
+// #include "../TransactionManager/Transaction.h"
 
 class StorageManager {
     private:
-        uint32_t index;
-        static const uint8_t length;
-        static const size_t cacheSize;
-        std::fstream metaFile;
+        static const uint8_t DATA_LENGTH = 124;
+        static const size_t PAGE_SIZE = 4096;
 
-        const std::string basepath = "OFS";
-        const std::string basepathTree = "Index";
-        const std::string basepathSM = "StorageManager";
-        const std::string treeIndexPath = basepathTree + "/bin/index.bin";
-        const std::string walBinPath = basepath + "/WAL/bin/WALFrame.bin";
-        const std::string metaDataPath = basepath + "/Buffer/config/metadata.conf";
-        const std::string iQueueBinPath = basepathSM + "/InsertionQueue/bin/DQueue.bin";
-
-        std::unique_ptr<WAL> wal;
         std::unique_ptr<BTree> tree;
         std::unique_ptr<LRU> lruCache;
-        std::unique_ptr<Buffer> buffer;
+        std::unique_ptr<BufferPool> bPool;
         std::unique_ptr<InsertionQueue> iQueue;
-        std::unique_ptr<Transaction> transaction;
+        // std::unique_ptr<Transaction> transaction;
 
         void overWriteRecord(uint32_t file_id, uint64_t offset, DataNode &node);
+        void writePageIntoBin(uint16_t file_id, uint16_t page_no, Page& page);
 
     public:
         StorageManager();
-        ~StorageManager();
-
-        void loadMetaData();
-        void saveMetaData();
 
         bool deleteRecord(uint32_t id);
         bool writeRecord(uint32_t id, std::string msg);
         bool updateRecord(uint32_t id, std::string msg);
         std::pair<std::string, std::string> readRecord(uint32_t id);
 
-        void walFrameClearAndSave();
         void init();
         
-        std::string getWALBinPath();
-        std::string getBTreeIndexPath();
-        std::string getInsertionQueueBinPath();
-        
-        uint32_t getCurrentBinIndex();
-        uint32_t getNewIndexForBinFlush();
         std::fstream* getFileByIndex(uint32_t index);
-        std::string getFilePathByIndex(uint32_t index);
+        void writePageIntoBin(BufferFrame& frame);
+        void readPageFromBin(uint16_t file_id, uint16_t page_no, Page& page);
+        std::pair<uint16_t, uint16_t> getNewIndexForBinFlush();
         std::pair<RecordPointer, std::fstream*> getInsertionPosAndFile();
-
-        friend class Buffer;
 };

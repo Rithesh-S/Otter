@@ -9,5 +9,4 @@ struct Cache {
     std::unique_ptr<std::fstream> file;
 
     Cache(uint32_t file_id, std::unique_ptr<std::fstream> file) : file_id(file_id), file(std::move(file)) {}
-    ~Cache() = default;
 };

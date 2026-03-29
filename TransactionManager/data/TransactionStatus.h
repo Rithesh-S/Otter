@@ -1,6 +1,9 @@
 #pragma once
 
 enum class TStatus {
-    IDLE,
-    PROGRESS,
+    SEARCH,UPDATE,
+    DELETE,INSERT,
+
+    BEGIN,COMMIT,
+    CHECKPOINT,ROLLBACK
 };

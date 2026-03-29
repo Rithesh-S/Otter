@@ -3,12 +3,12 @@
 
 std::queue<RecordPointer> InsertionQueue::insertionQueue;
 
-InsertionQueue::InsertionQueue(StorageManager* sm, std::string binPath) : storageManager(sm) {
+InsertionQueue::InsertionQueue(StorageManager* sm) : storageManager(sm) {
     file.open(binPath, std::ios::binary | std::ios::in | std::ios::out);
     if(!file.is_open()) {
         std::ofstream creator(binPath, std::ios::binary);
         if(!creator) {
-            throw std::runtime_error("\033[31mERROR:Unable to create file:" + binPath + ".\033[0m");
+            throw std::runtime_error("\033[31mERROR: Unable to create file:" + binPath + ".\033[0m");
             exit(1);
         }
         creator.close();
@@ -22,7 +22,10 @@ InsertionQueue::~InsertionQueue() { saveBinData(); }
 
 void InsertionQueue::putRecordPointer(RecordPointer rp) { insertionQueue.push(rp); }
 
-void InsertionQueue::refillQueue(uint32_t file_id) { for(size_t i = 0; i < bufferSize; i += dataNodeSize) putRecordPointer({ file_id, i }); }
+void InsertionQueue::refillQueue(std::pair<uint16_t, uint16_t> indexPair) { 
+    for(size_t i = 0; i < RECORD_COUNT; ++i) 
+        putRecordPointer({ indexPair.first, indexPair.second }); 
+}
 
 RecordPointer InsertionQueue::getRecordPointer() {
     if(insertionQueue.empty()) refillQueue(storageManager -> getNewIndexForBinFlush());
