@@ -1,4 +1,4 @@
-# 🦦 Otter DB
+# Otter DB
 
 **A persistent, disk-based NoSQL storage engine with B-Tree indexing and WAL recovery.**
 
@@ -6,7 +6,7 @@ Otter DB is a high-performance storage kernel built from the ground up in C++17.
 
 ---
 
-## 🚀 Key Features
+## Key Features
 
 * **Disk-Resident B-Tree:** High-performance indexing with  lookup, using 4096-byte page alignment to match hardware sectors.
 * **Crash Resilience (WAL):** Uses a Write-Ahead Log with **CRC32 checksums** to automatically recover from system failures or interrupted transactions.
@@ -16,7 +16,7 @@ Otter DB is a high-performance storage kernel built from the ground up in C++17.
 
 ---
 
-## 🏗️ Architecture & Internals
+## Architecture & Internals
 
 ### 1. Storage Layer (OFS)
 
@@ -42,7 +42,7 @@ Otter DB follows a classic compiler architecture:
 
 ---
 
-## ⌨️ Query Language Reference
+## Query Language Reference
 
 | Command | Syntax | Description |
 | --- | --- | --- |
@@ -54,7 +54,7 @@ Otter DB follows a classic compiler architecture:
 
 ---
 
-## 🛠️ Build & Installation
+## Build & Installation
 
 ### Prerequisites
 
@@ -72,7 +72,7 @@ You can use the provided `run.bat` script:
 
 ---
 
-## 📈 Technical Specs
+## Technical Specs
 
 * **B-Tree Order ():** 204
 * **Node Size:** 4096 Bytes
@@ -82,7 +82,7 @@ You can use the provided `run.bat` script:
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License.
 
